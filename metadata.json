@@ -1,0 +1,6 @@
+{
+  "name": "Simple Survey",
+  "category": "Apps",
+  "callable": "SimpleSurveyApp",
+  "hidden": false
+}
