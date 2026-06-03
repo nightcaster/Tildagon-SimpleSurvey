@@ -581,42 +581,33 @@ class SimpleSurveyApp(app.App):
     def _draw_option_labels(self, ctx, options):
         ctx.save()
         ctx.font_size = FONT_SIZE_OPTION_LBL
-        ctx.text_baseline = ctx.MIDDLE
+        
+        R = 90  # Radius inside the radial gauge (gauge is at R=114, thickness 10)
         
         for opt in options:
             btn_num = opt["button"]
             lbl = f"[{BUTTON_NUM_TO_LETTER[btn_num]}] {opt['label']}"
-            votes = opt["votes"]
+            votes = f"({opt['votes']})"
             color = opt["color"]
             color_float = tuple(c / 255.0 for c in color)
             
-            ctx.rgb(*color_float)
+            theta = -math.pi / 2 + (btn_num - 1) * math.pi / 3
+            x = R * math.cos(theta)
+            y = R * math.sin(theta)
             
-            if btn_num == 1:
-                ctx.text_align = ctx.CENTER
-                ctx.move_to(0, -82).text(lbl)
-                ctx.move_to(0, -70).text(f"({votes})")
-            elif btn_num == 2:
-                ctx.text_align = ctx.LEFT
-                ctx.move_to(48, -42).text(lbl)
-                ctx.move_to(48, -30).text(f"({votes})")
-            elif btn_num == 3:
-                ctx.text_align = ctx.LEFT
-                ctx.move_to(48, 42).text(lbl)
-                ctx.move_to(48, 54).text(f"({votes})")
-            elif btn_num == 4:
-                ctx.text_align = ctx.CENTER
-                ctx.move_to(0, 82).text(lbl)
-                ctx.move_to(0, 70).text(f"({votes})")
-            elif btn_num == 5:
-                ctx.text_align = ctx.RIGHT
-                ctx.move_to(-48, 42).text(lbl)
-                ctx.move_to(-48, 54).text(f"({votes})")
-            elif btn_num == 6:
-                ctx.text_align = ctx.RIGHT
-                ctx.move_to(-48, -42).text(lbl)
-                ctx.move_to(-48, -30).text(f"({votes})")
-                
+            ctx.save()
+            ctx.translate(x, y)
+            ctx.rotate(theta + math.pi / 2)
+            
+            ctx.rgb(*color_float)
+            ctx.text_align = ctx.CENTER
+            ctx.text_baseline = ctx.MIDDLE
+            
+            ctx.move_to(0, -7).text(lbl)
+            ctx.move_to(0, 7).text(votes)
+            
+            ctx.restore()
+            
         ctx.restore()
 
 
