@@ -12,9 +12,9 @@ from system.patterndisplay.events import PatternDisable, PatternEnable
 # Font Sizes Configurations
 
 # 1. Polling & Option Selection Screen
-FONT_SIZE_QUESTION_MID = 20      # Survey question text inside the outer results circle
-FONT_SIZE_POLLING_VOTES = 16     # Total votes count below the centered question
-FONT_SIZE_OPTION_LBL = 13        # Option labels and individual counts around perimeter
+FONT_SIZE_QUESTION_MID = 24      # Survey question text inside the outer results circle
+FONT_SIZE_POLLING_VOTES = 18     # Total votes count below the centered question
+FONT_SIZE_OPTION_LBL = 16        # Option labels and individual counts around perimeter
 FONT_SIZE_BANNER = 16            # Hold-to-exit countdown/warning overlay message
 
 # 2. Vote Recorded Screen (Success)
@@ -22,19 +22,13 @@ FONT_SIZE_SUCCESS_LBL = 26       # Centered name of option voted for
 FONT_SIZE_SUCCESS_VOTES = 16     # Option's vote count below option name
 
 # 3. View Results Screen
-FONT_SIZE_RESULTS_TITLE = 12     # Survey name title at the top
-FONT_SIZE_RESULTS_QUESTION = 14  # Survey question text below title
-FONT_SIZE_RESULTS_DETAILS = 12   # Vote count and percent list items at the bottom
+FONT_SIZE_RESULTS_TITLE = 16     # Survey name title at the top
+FONT_SIZE_RESULTS_QUESTION = 18  # Survey question text below title
+FONT_SIZE_RESULTS_DETAILS = 16   # Vote count and percent list items at the bottom
 FONT_SIZE_RESULTS_EXIT = 11      # CANCEL button exit instructions at the bottom
 
 # 4. Circular Gauge Helper
-FONT_SIZE_GAUGE = 14             # Center total vote count on standalone gauge
-
-# 5. Legacy / Idle Question Screen (Bypassed)
-FONT_SIZE_TITLE = 12             # Survey name title at the top
-FONT_SIZE_QUESTION_LARGE = 20    # Survey question text in the center
-FONT_SIZE_PROMPT = 17            # "Press any key" prompt text
-FONT_SIZE_EXIT_INSTRUCTION = 14  # Back navigation key instructions
+FONT_SIZE_GAUGE = 20             # Center total vote count on standalone gauge
 
 BUTTON_NUM_TO_NAME = {
     1: "UP",
@@ -564,41 +558,6 @@ class SimpleSurveyApp(app.App):
                 
         ctx.restore()
 
-    def _draw_active_question(self, ctx):
-        ctx.save()
-        # Title
-        ctx.rgb(0.5, 0.8, 0.5)
-        ctx.font_size = FONT_SIZE_TITLE
-        ctx.text_align = ctx.CENTER
-        ctx.text_baseline = getattr(ctx, "TOP", "top")
-        ctx.move_to(0, -95).text(self.current_survey["name"])
-        
-        # Question
-        ctx.rgb(1.0, 1.0, 1.0)
-        ctx.font_size = FONT_SIZE_QUESTION_LARGE
-        ctx.text_align = ctx.CENTER
-        ctx.text_baseline = ctx.MIDDLE
-        
-        question = self.current_survey["question"]
-        lines = self._wrap_text(question, ctx, 180)
-        start_y = -40
-        for idx, line in enumerate(lines[:3]):
-            ctx.move_to(0, start_y + idx * 18).text(line)
-            
-        # Prompt
-        ctx.rgb(0.7, 0.7, 0.7)
-        ctx.font_size = FONT_SIZE_PROMPT
-        ctx.text_align = ctx.CENTER
-        ctx.text_baseline = ctx.MIDDLE
-        ctx.move_to(0, 40).text("Press any key")
-        ctx.move_to(0, 56).text("to view options")
-        
-        # Exit instruction
-        ctx.rgb(0.9, 0.3, 0.3)
-        ctx.font_size = FONT_SIZE_EXIT_INSTRUCTION
-        ctx.text_align = ctx.CENTER
-        ctx.move_to(0, 85).text("CANCEL: Back")
-        ctx.restore()
 
     def _draw_active_polling(self, ctx):
         ctx.save()
@@ -766,8 +725,7 @@ class SimpleSurveyApp(app.App):
         if self.state in ["MAIN_MENU", "SURVEY_MENU", "CREATING_IN_PROGRESS"]:
             if self.menu:
                 self.menu.draw(ctx)
-        elif self.state == "ACTIVE_QUESTION":
-            self._draw_active_question(ctx)
+
         elif self.state == "ACTIVE_POLLING":
             self._draw_active_polling(ctx)
         elif self.state == "VOTE_SUCCESS":
