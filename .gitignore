@@ -4,4 +4,4 @@ __pycache__/
 sync-config.json
 scripts/
 .vscode/
-
+metadata.json

@@ -1,7 +1,0 @@
-{
-  "name": "Simple Survey",
-  "category": "Apps",
-  "callable": "SimpleSurveyApp",
-  "hidden": false,
-  "path": "apps.simplesurvey.app"
-}
