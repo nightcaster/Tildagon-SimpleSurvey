@@ -40,6 +40,16 @@ BUTTON_NUM_TO_NAME = {
 }
 BUTTON_NAME_TO_NUM = {v: k for k, v in BUTTON_NUM_TO_NAME.items()}
 
+BUTTON_NUM_TO_LETTER = {
+    1: "A",
+    2: "B",
+    3: "C",
+    4: "D",
+    5: "E",
+    6: "F"
+}
+BUTTON_LETTER_TO_NUM = {v: k for k, v in BUTTON_NUM_TO_LETTER.items()}
+
 class SimpleSurveyApp(app.App):
     def __init__(self):
         super().__init__()
@@ -60,6 +70,7 @@ class SimpleSurveyApp(app.App):
         self.fade_duration = 0.5
         self.cancel_is_held = False
         self.cancel_press_time = 0.0
+        self.held_buttons = set()
         
         # Load surveys from JSON
         self._load_surveys()
@@ -76,22 +87,37 @@ class SimpleSurveyApp(app.App):
         eventbus.emit(RequestStopAppEvent(self))
 
     def _load_surveys(self):
+        self.surveys = []
+        paths_to_try = []
+        
+        # 1. Try relative to __file__
         try:
+            if "/" in __file__:
+                paths_to_try.append("/".join(__file__.split("/")[:-1]) + "/surveys.json")
+            elif "\\" in __file__:
+                paths_to_try.append("\\".join(__file__.split("\\")[:-1]) + "\\surveys.json")
+        except Exception:
+            pass
+            
+        # 2. Try standard badge/simulator paths
+        paths_to_try.append("apps/simplesurvey/surveys.json")
+        paths_to_try.append("apps/SimpleSurvey/surveys.json")
+        paths_to_try.append("surveys.json")
+        
+        # Try loading from the first path that successfully opens
+        for path in paths_to_try:
             try:
-                # Find path relative to app.py
-                app_dir = os.path.dirname(__file__)
-                if not app_dir:
-                    app_dir = "."
+                with open(path, "r") as f:
+                    self.surveys = json.load(f)
+                self.data_path = path
+                print(f"Loaded surveys from: {path}")
+                return
             except Exception:
-                app_dir = "."
-            
-            self.data_path = os.path.join(app_dir, "surveys.json")
-            
-            with open(self.data_path, "r") as f:
-                self.surveys = json.load(f)
-        except Exception as e:
-            print(f"Error loading surveys: {e}")
-            self.surveys = []
+                continue
+                
+        # Fallback path if none existed
+        self.data_path = "apps/simplesurvey/surveys.json"
+        print("Could not load surveys.json, starting fresh.")
 
     def _save_surveys(self):
         try:
@@ -114,6 +140,9 @@ class SimpleSurveyApp(app.App):
 
     def _handle_main_menu_select(self, item, idx):
         if item == "Create Survey":
+            if self.menu:
+                self.menu._cleanup()
+                self.menu = None
             self.state = "CREATING"
         elif item == "Exit":
             self._cleanup_all()
@@ -219,6 +248,8 @@ class SimpleSurveyApp(app.App):
             await self._render_update()
             
             while self._menu_result is None:
+                self.update(50)
+                await self._render_update()
                 await asyncio.sleep(0.05)
                 
             color_name = self._menu_result
@@ -233,7 +264,7 @@ class SimpleSurveyApp(app.App):
             # Select Button mapping using Menu
             assigned_buttons = [opt["button"] for opt in options]
             available_buttons = [b for b in preferred_buttons if b not in assigned_buttons]
-            button_items = [f"Button {b} ({BUTTON_NUM_TO_NAME[b]})" for b in available_buttons]
+            button_items = [f"Button {BUTTON_NUM_TO_LETTER[b]} ({BUTTON_NUM_TO_NAME[b]})" for b in available_buttons]
             
             if self.menu:
                 self.menu._cleanup()
@@ -246,12 +277,15 @@ class SimpleSurveyApp(app.App):
             await self._render_update()
             
             while self._menu_result is None:
+                self.update(50)
+                await self._render_update()
                 await asyncio.sleep(0.05)
                 
             button_choice = self._menu_result
             self._menu_result = None
             
-            chosen_btn = int(button_choice.split(" ")[1])
+            chosen_letter = button_choice.split(" ")[1]
+            chosen_btn = BUTTON_LETTER_TO_NUM[chosen_letter]
             
             options.append({
                 "label": label,
@@ -288,22 +322,30 @@ class SimpleSurveyApp(app.App):
     def _handle_buttondown(self, event):
         if self.dialog:
             return
-        if self.state in ["MAIN_MENU", "SURVEY_MENU", "CREATING_IN_PROGRESS"]:
+        if self.state in ["MAIN_MENU", "SURVEY_MENU", "CREATING", "CREATING_IN_PROGRESS"]:
             return
             
         btn_num = self._get_btn_num(event)
+        if btn_num is None:
+            return
+            
+        if btn_num in self.held_buttons:
+            return
+        self.held_buttons.add(btn_num)
         
         if self.state == "ACTIVE_POLLING":
             if btn_num == 6:
                 # If there's an option on button 6, use hold timeout, otherwise exit immediately
                 has_btn_6_option = any(opt["button"] == 6 for opt in self.current_survey["options"])
                 if has_btn_6_option:
-                    self.cancel_is_held = True
-                    self.cancel_press_time = 0.0
+                    if not self.cancel_is_held:
+                        self.cancel_is_held = True
+                        self.cancel_press_time = 0.0
                     if self._render_update:
                         asyncio.create_task(self._render_update())
                 else:
                     self._clear_leds()
+                    self.held_buttons.clear()
                     self.state = "SURVEY_MENU"
                     self._init_survey_menu()
                     if self._render_update:
@@ -313,6 +355,7 @@ class SimpleSurveyApp(app.App):
                 self._record_vote(btn_num)
         elif self.state == "VIEW_RESULTS":
             if btn_num == 6:
+                self.held_buttons.clear()
                 self.state = "SURVEY_MENU"
                 self._init_survey_menu()
                 if self._render_update:
@@ -321,10 +364,21 @@ class SimpleSurveyApp(app.App):
     def _handle_buttonup(self, event):
         if self.dialog:
             return
-        if self.state in ["MAIN_MENU", "SURVEY_MENU", "CREATING_IN_PROGRESS"]:
-            return
             
         btn_num = self._get_btn_num(event)
+        if btn_num is not None:
+            self.held_buttons.discard(btn_num)
+            
+        if self.state == "WAITING_FOR_CANCEL_RELEASE" and btn_num == 6:
+            self.state = "SURVEY_MENU"
+            self._init_survey_menu()
+            if self._render_update:
+                asyncio.create_task(self._render_update())
+            return
+            
+        if self.state in ["MAIN_MENU", "SURVEY_MENU", "CREATING", "CREATING_IN_PROGRESS"]:
+            return
+            
         if self.state == "ACTIVE_POLLING" and btn_num == 6:
             if self.cancel_is_held:
                 duration = self.cancel_press_time
@@ -396,6 +450,7 @@ class SimpleSurveyApp(app.App):
             self.dialog._cleanup()
             self.dialog = None
         self._clear_leds()
+        self.held_buttons.clear()
         eventbus.remove(ButtonDownEvent, self._handle_buttondown, self)
         eventbus.remove(ButtonUpEvent, self._handle_buttonup, self)
 
@@ -442,8 +497,7 @@ class SimpleSurveyApp(app.App):
                 self.cancel_is_held = False
                 self.cancel_press_time = 0.0
                 self._clear_leds()
-                self.state = "SURVEY_MENU"
-                self._init_survey_menu()
+                self.state = "WAITING_FOR_CANCEL_RELEASE"
                 if self._render_update:
                     asyncio.create_task(self._render_update())
             
@@ -531,7 +585,7 @@ class SimpleSurveyApp(app.App):
         
         for opt in options:
             btn_num = opt["button"]
-            lbl = opt["label"]
+            lbl = f"[{BUTTON_NUM_TO_LETTER[btn_num]}] {opt['label']}"
             votes = opt["votes"]
             color = opt["color"]
             color_float = tuple(c / 255.0 for c in color)
@@ -609,7 +663,7 @@ class SimpleSurveyApp(app.App):
             ctx.text_baseline = ctx.MIDDLE
             
             rem = max(1, int(4.0 - self.cancel_press_time))
-            ctx.move_to(0, -12).text("Keep holding to return")
+            ctx.move_to(0, -12).text("Keep holding F to return")
             ctx.move_to(0, 12).text(f"to menu in {rem}s...")
             ctx.restore()
             
@@ -742,7 +796,7 @@ class SimpleSurveyApp(app.App):
         ctx.rgb(0.6, 0.6, 0.6)
         ctx.font_size = FONT_SIZE_RESULTS_EXIT
         ctx.text_align = ctx.CENTER
-        ctx.move_to(0, 95).text("Press CANCEL to exit")
+        ctx.move_to(0, 95).text("Press CANCEL (F) to exit")
         ctx.restore()
 
     def draw(self, ctx):
