@@ -491,14 +491,26 @@ class SimpleSurveyApp(app.App):
                 ctx.text_baseline = ctx.MIDDLE
                 ctx.move_to(x, y).text("0")
         else:
-            start_angle = -math.pi / 2
+            # Draw underlying gray ring for empty sectors
+            ctx.rgb(0.15, 0.15, 0.15)
+            ctx.begin_path()
+            ctx.arc(x, y, radius, 0, 2 * math.pi, False).stroke()
+
+            # Draw colored gauge segments centered at option buttons
             for opt in options:
                 votes = opt["votes"]
                 if votes == 0:
                     continue
                 pct = votes / total_votes
-                angle_size = pct * 2 * math.pi
-                end_angle = start_angle + angle_size
+                btn_num = opt["button"]
+                
+                # Calculate button angle
+                theta = -math.pi / 2 + (btn_num - 1) * math.pi / 3
+                
+                # Segment size (max is pi/3 or 60 degrees)
+                angle_size = pct * (math.pi / 3)
+                start_angle = theta - angle_size / 2
+                end_angle = theta + angle_size / 2
                 
                 color = opt["color"]
                 color_float = tuple(c / 255.0 for c in color)
@@ -506,7 +518,6 @@ class SimpleSurveyApp(app.App):
                 
                 ctx.begin_path()
                 ctx.arc(x, y, radius, start_angle, end_angle, False).stroke()
-                start_angle = end_angle
                 
             if draw_center_text:
                 ctx.rgb(1.0, 1.0, 1.0)
