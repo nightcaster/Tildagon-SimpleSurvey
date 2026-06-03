@@ -540,28 +540,28 @@ class SimpleSurveyApp(app.App):
             
             if btn_num == 1:
                 ctx.text_align = ctx.CENTER
-                ctx.move_to(0, -94).text(lbl)
-                ctx.move_to(0, -82).text(f"({votes})")
+                ctx.move_to(0, -82).text(lbl)
+                ctx.move_to(0, -70).text(f"({votes})")
             elif btn_num == 2:
                 ctx.text_align = ctx.LEFT
-                ctx.move_to(72, -54).text(lbl)
-                ctx.move_to(72, -42).text(f"({votes})")
+                ctx.move_to(48, -42).text(lbl)
+                ctx.move_to(48, -30).text(f"({votes})")
             elif btn_num == 3:
                 ctx.text_align = ctx.LEFT
-                ctx.move_to(72, 54).text(lbl)
-                ctx.move_to(72, 66).text(f"({votes})")
+                ctx.move_to(48, 42).text(lbl)
+                ctx.move_to(48, 54).text(f"({votes})")
             elif btn_num == 4:
                 ctx.text_align = ctx.CENTER
-                ctx.move_to(0, 94).text(lbl)
-                ctx.move_to(0, 106).text(f"({votes})")
+                ctx.move_to(0, 82).text(lbl)
+                ctx.move_to(0, 70).text(f"({votes})")
             elif btn_num == 5:
                 ctx.text_align = ctx.RIGHT
-                ctx.move_to(-72, 54).text(lbl)
-                ctx.move_to(-72, 66).text(f"({votes})")
+                ctx.move_to(-48, 42).text(lbl)
+                ctx.move_to(-48, 54).text(f"({votes})")
             elif btn_num == 6:
                 ctx.text_align = ctx.RIGHT
-                ctx.move_to(-72, -54).text(lbl)
-                ctx.move_to(-72, -42).text(f"({votes})")
+                ctx.move_to(-48, -42).text(lbl)
+                ctx.move_to(-48, -30).text(f"({votes})")
                 
         ctx.restore()
 
