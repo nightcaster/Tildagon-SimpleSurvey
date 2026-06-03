@@ -8,6 +8,6 @@ class = "SimpleSurveyApp"
 [metadata]
 author = "nightcaster"
 license = "LGPL-3.0-only"
-url = "https://forge.nightcaster.duckdns.org/nightcaster/Tildagon-SimpleSurvey.git"
+url = "https://github.com/nightcaster/Tildagon-SimpleSurvey.git"
 description = "Create, run, and display results of custom button surveys."
 version = 1
