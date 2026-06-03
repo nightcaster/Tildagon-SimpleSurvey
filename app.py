@@ -3,7 +3,7 @@ import math
 import app
 import json
 import os
-from events.input import BUTTON_TYPES, ButtonDownEvent
+from events.input import BUTTON_TYPES, ButtonDownEvent, ButtonUpEvent
 from tildagonos import tildagonos
 from system.eventbus import eventbus
 from app_components import Menu, TextDialog, clear_background
@@ -32,7 +32,13 @@ class SimpleSurveyApp(app.App):
         self._render_update = None
         self._menu_result = None
         self.success_color = None
-        self.success_timer = 0.0
+        self.success_label = ""
+        self.success_button = 1
+        self.anim_time = 0.0
+        self.animation_duration = 2.0
+        self.fade_duration = 0.5
+        self.cancel_is_held = False
+        self.cancel_press_time = 0.0
         
         # Load surveys from JSON
         self._load_surveys()
@@ -40,8 +46,9 @@ class SimpleSurveyApp(app.App):
         # Initialize main menu
         self._init_main_menu()
         
-        # Register for button down events
+        # Register for button events
         eventbus.on(ButtonDownEvent, self._handle_buttondown, self)
+        eventbus.on(ButtonUpEvent, self._handle_buttonup, self)
 
     def minimise(self):
         from system.scheduler.events import RequestStopAppEvent
@@ -116,8 +123,8 @@ class SimpleSurveyApp(app.App):
             if self.menu:
                 self.menu._cleanup()
                 self.menu = None
-            self.state = "ACTIVE_QUESTION"
-            self._clear_leds()
+            self.state = "ACTIVE_POLLING"
+            self._set_option_leds()
         elif item == "View Results":
             if self.menu:
                 self.menu._cleanup()
@@ -251,70 +258,73 @@ class SimpleSurveyApp(app.App):
         self._init_main_menu()
         await self._render_update()
 
+    def _get_btn_num(self, event):
+        for k, v in BUTTON_TYPES.items():
+            if v in event.button:
+                return BUTTON_NAME_TO_NUM.get(k)
+        return None
+
     def _handle_buttondown(self, event):
         if self.dialog:
             return
         if self.state in ["MAIN_MENU", "SURVEY_MENU", "CREATING_IN_PROGRESS"]:
             return
             
-        if self.state == "ACTIVE_QUESTION":
-            self._handle_active_question_button(event)
-        elif self.state == "ACTIVE_POLLING":
-            self._handle_active_polling_button(event)
-        elif self.state == "VIEW_RESULTS":
-            self._handle_view_results_button(event)
-
-    def _handle_active_question_button(self, event):
-        if BUTTON_TYPES["CANCEL"] in event.button:
-            self.state = "SURVEY_MENU"
-            self._init_survey_menu()
-            if self._render_update:
-                asyncio.create_task(self._render_update())
-            return
-            
-        self.state = "ACTIVE_POLLING"
-        self._set_option_leds()
-        if self._render_update:
-            asyncio.create_task(self._render_update())
-
-    def _handle_active_polling_button(self, event):
-        btn_num = None
-        for k, v in BUTTON_TYPES.items():
-            if v in event.button:
-                btn_num = BUTTON_NAME_TO_NUM.get(k)
-                break
-                
-        if btn_num is not None:
-            opt = None
-            for o in self.current_survey["options"]:
-                if o["button"] == btn_num:
-                    opt = o
-                    break
-                    
-            if opt is not None:
-                opt["votes"] += 1
-                self._save_surveys()
-                
-                self.state = "VOTE_SUCCESS"
-                self.success_color = opt["color"]
-                self.success_timer = 1.5
-                self._set_all_leds(opt["color"])
+        btn_num = self._get_btn_num(event)
+        
+        if self.state == "ACTIVE_POLLING":
+            if btn_num == 6:
+                self.cancel_is_held = True
+                self.cancel_press_time = 0.0
                 if self._render_update:
                     asyncio.create_task(self._render_update())
                 return
+            elif btn_num is not None:
+                self._record_vote(btn_num)
+        elif self.state == "VIEW_RESULTS":
+            if btn_num == 6:
+                self.state = "SURVEY_MENU"
+                self._init_survey_menu()
+                if self._render_update:
+                    asyncio.create_task(self._render_update())
+
+    def _handle_buttonup(self, event):
+        if self.dialog:
+            return
+        if self.state in ["MAIN_MENU", "SURVEY_MENU", "CREATING_IN_PROGRESS"]:
+            return
+            
+        btn_num = self._get_btn_num(event)
+        if self.state == "ACTIVE_POLLING" and btn_num == 6:
+            if self.cancel_is_held:
+                duration = self.cancel_press_time
+                self.cancel_is_held = False
+                self.cancel_press_time = 0.0
+                if duration < 3.0:
+                    self._record_vote(6)
+                if self._render_update:
+                    asyncio.create_task(self._render_update())
+
+    def _record_vote(self, btn_num):
+        opt = None
+        for o in self.current_survey["options"]:
+            if o["button"] == btn_num:
+                opt = o
+                break
                 
-        if btn_num == 6:
-            # If CANCEL is pressed and is not an option, exit polling
-            self._clear_leds()
-            self.state = "ACTIVE_QUESTION"
+        if opt is not None:
+            opt["votes"] += 1
+            self._save_surveys()
+            
+            self.state = "VOTE_SUCCESS"
+            self.success_color = opt["color"]
+            self.success_label = opt["label"]
+            self.success_button = opt["button"]
+            self.anim_time = 0.0
+            
+            self._update_success_leds(self.success_button, self.success_color, 0.0)
             if self._render_update:
                 asyncio.create_task(self._render_update())
-
-    def _handle_view_results_button(self, event):
-        self.state = "SURVEY_MENU"
-        self._init_survey_menu()
-        if self._render_update:
-            asyncio.create_task(self._render_update())
 
     def _set_option_leds(self):
         eventbus.emit(PatternDisable())
@@ -357,16 +367,64 @@ class SimpleSurveyApp(app.App):
             self.dialog = None
         self._clear_leds()
         eventbus.remove(ButtonDownEvent, self._handle_buttondown, self)
+        eventbus.remove(ButtonUpEvent, self._handle_buttonup, self)
+
+    def _update_success_leds(self, button_num, color, t):
+        eventbus.emit(PatternDisable())
+        for i in range(19):
+            tildagonos.leds[i] = (0, 0, 0)
+            
+        T_prop = 1.0
+        outer_leds = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+        
+        i1 = (button_num - 1) * 2
+        i2 = i1 + 1
+        
+        if t >= self.animation_duration:
+            # Fade out
+            fade_pct = max(0.0, 1.0 - (t - self.animation_duration) / self.fade_duration)
+            faded = tuple(int(c * fade_pct) for c in color)
+            for led_idx in outer_leds:
+                tildagonos.leds[led_idx] = faded
+        elif t >= T_prop:
+            # All outer LEDs lit
+            for led_idx in outer_leds:
+                tildagonos.leds[led_idx] = tuple(color)
+        else:
+            # Propagating
+            step = int((t / T_prop) * 6)
+            for j in range(step + 1):
+                idx_l = (i1 - j) % 12
+                idx_r = (i2 + j) % 12
+                tildagonos.leds[outer_leds[idx_l]] = tuple(color)
+                tildagonos.leds[outer_leds[idx_r]] = tuple(color)
+                
+        tildagonos.leds.write()
 
     def update(self, delta):
+        dt = delta / 1000.0
         if self.state in ["MAIN_MENU", "SURVEY_MENU", "CREATING_IN_PROGRESS"] and self.menu:
             self.menu.update(delta)
             
-        if self.state == "VOTE_SUCCESS":
-            self.success_timer -= delta
-            if self.success_timer <= 0:
+        if self.state == "ACTIVE_POLLING" and self.cancel_is_held:
+            self.cancel_press_time += dt
+            if self.cancel_press_time >= 3.0:
+                self.cancel_is_held = False
+                self.cancel_press_time = 0.0
                 self._clear_leds()
-                self.state = "ACTIVE_QUESTION"
+                self.state = "SURVEY_MENU"
+                self._init_survey_menu()
+                if self._render_update:
+                    asyncio.create_task(self._render_update())
+            
+        if self.state == "VOTE_SUCCESS":
+            self.anim_time += dt
+            self._update_success_leds(self.success_button, self.success_color, self.anim_time)
+            
+            if self.anim_time >= self.animation_duration + self.fade_duration:
+                self._clear_leds()
+                self.state = "ACTIVE_POLLING"
+                self._set_option_leds()
                 if self._render_update:
                     asyncio.create_task(self._render_update())
 
@@ -512,19 +570,75 @@ class SimpleSurveyApp(app.App):
         
         # Option labels
         self._draw_option_labels(ctx, self.current_survey["options"])
+        
+        # Hold CANCEL button to exit note banner
+        if self.cancel_is_held and self.cancel_press_time >= 1.0:
+            ctx.save()
+            ctx.rgb(0.08, 0.08, 0.08)
+            ctx.rectangle(-85, -30, 170, 60).fill()
+            ctx.rgb(0.8, 0.2, 0.2)
+            ctx.line_width = 1.5
+            ctx.rectangle(-85, -30, 170, 60).stroke()
+            
+            ctx.rgb(1.0, 1.0, 1.0)
+            ctx.font_size = 11
+            ctx.text_align = ctx.CENTER
+            ctx.text_baseline = ctx.MIDDLE
+            
+            rem = max(1, int(4.0 - self.cancel_press_time))
+            ctx.move_to(0, -12).text("Keep holding to return")
+            ctx.move_to(0, 12).text(f"to menu in {rem}s...")
+            ctx.restore()
+            
         ctx.restore()
 
     def _draw_vote_success(self, ctx):
         ctx.save()
-        ctx.rgb(0.1, 0.8, 0.1)
-        ctx.font_size = 24
+        
+        # Calculate animation time and target colors
+        t = self.anim_time
+        color = self.success_color
+        
+        fade_pct = 1.0
+        if t >= self.animation_duration:
+            fade_pct = max(0.0, 1.0 - (t - self.animation_duration) / self.fade_duration)
+            
+        # Flood effect coordinates (distance from button)
+        T_flood = 1.0
+        if t < T_flood:
+            r_flood = 2.5 * 120 * (t / T_flood)
+        else:
+            r_flood = 300
+            
+        # Find pressed button angle/coords
+        btn_num = self.success_button
+        theta = -math.pi / 2 + (btn_num - 1) * math.pi / 3
+        xb = 120 * math.cos(theta)
+        yb = 120 * math.sin(theta)
+        
+        # Draw background flood
+        color_float = [c / 255.0 for c in color]
+        ctx.rgb(color_float[0] * fade_pct, color_float[1] * fade_pct, color_float[2] * fade_pct)
+        ctx.arc(xb, yb, r_flood, 0, 2 * math.pi, True).fill()
+        
+        # Calculate contrast text color
+        brightness = 0.299 * color[0] + 0.587 * color[1] + 0.114 * color[2]
+        if brightness > 128:
+            ctx.rgb(0, 0, 0)
+        else:
+            ctx.rgb(fade_pct, fade_pct, fade_pct)
+            
+        # Large text in center of screen
+        ctx.font_size = 20
         ctx.text_align = ctx.CENTER
         ctx.text_baseline = ctx.MIDDLE
-        ctx.move_to(0, -10).text("Success!")
         
-        ctx.rgb(1.0, 1.0, 1.0)
-        ctx.font_size = 14
-        ctx.move_to(0, 20).text("Vote Recorded")
+        # Wrapping options label
+        lines = self._wrap_text(self.success_label, ctx, 180)
+        start_y = -((len(lines) - 1) * 12)
+        for idx, line in enumerate(lines):
+            ctx.move_to(0, start_y + idx * 24).text(line)
+            
         ctx.restore()
 
     def _draw_view_results(self, ctx):
