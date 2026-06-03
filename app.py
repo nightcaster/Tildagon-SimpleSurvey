@@ -274,10 +274,19 @@ class SimpleSurveyApp(app.App):
         
         if self.state == "ACTIVE_POLLING":
             if btn_num == 6:
-                self.cancel_is_held = True
-                self.cancel_press_time = 0.0
-                if self._render_update:
-                    asyncio.create_task(self._render_update())
+                # If there's an option on button 6, use hold timeout, otherwise exit immediately
+                has_btn_6_option = any(opt["button"] == 6 for opt in self.current_survey["options"])
+                if has_btn_6_option:
+                    self.cancel_is_held = True
+                    self.cancel_press_time = 0.0
+                    if self._render_update:
+                        asyncio.create_task(self._render_update())
+                else:
+                    self._clear_leds()
+                    self.state = "SURVEY_MENU"
+                    self._init_survey_menu()
+                    if self._render_update:
+                        asyncio.create_task(self._render_update())
                 return
             elif btn_num is not None:
                 self._record_vote(btn_num)
@@ -451,7 +460,8 @@ class SimpleSurveyApp(app.App):
         
         if total_votes == 0:
             ctx.rgb(0.15, 0.15, 0.15)
-            ctx.arc(x, y, radius, 0, 2 * math.pi, True).stroke()
+            ctx.begin_path()
+            ctx.arc(x, y, radius, 0, 2 * math.pi, False).stroke()
             
             ctx.rgb(0.5, 0.5, 0.5)
             ctx.font_size = 14
@@ -472,7 +482,8 @@ class SimpleSurveyApp(app.App):
                 color_float = tuple(c / 255.0 for c in color)
                 ctx.rgb(*color_float)
                 
-                ctx.arc(x, y, radius, start_angle, end_angle, True).stroke()
+                ctx.begin_path()
+                ctx.arc(x, y, radius, start_angle, end_angle, False).stroke()
                 start_angle = end_angle
                 
             ctx.rgb(1.0, 1.0, 1.0)
