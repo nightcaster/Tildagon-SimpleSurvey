@@ -9,6 +9,23 @@ from system.eventbus import eventbus
 from app_components import Menu, TextDialog, clear_background
 from system.patterndisplay.events import PatternDisable, PatternEnable
 
+# Font Sizes Configurations
+FONT_SIZE_GAUGE = 14
+FONT_SIZE_OPTION_LBL = 13
+FONT_SIZE_TITLE = 12
+FONT_SIZE_QUESTION_LARGE = 15
+FONT_SIZE_PROMPT = 14
+FONT_SIZE_EXIT_INSTRUCTION = 11
+FONT_SIZE_QUESTION_MID = 15
+FONT_SIZE_POLLING_VOTES = 13
+FONT_SIZE_BANNER = 13
+FONT_SIZE_SUCCESS_LBL = 22
+FONT_SIZE_SUCCESS_VOTES = 16
+FONT_SIZE_RESULTS_TITLE = 12
+FONT_SIZE_RESULTS_QUESTION = 14
+FONT_SIZE_RESULTS_DETAILS = 12
+FONT_SIZE_RESULTS_EXIT = 11
+
 BUTTON_NUM_TO_NAME = {
     1: "UP",
     2: "RIGHT",
@@ -465,7 +482,7 @@ class SimpleSurveyApp(app.App):
             
             if draw_center_text:
                 ctx.rgb(0.5, 0.5, 0.5)
-                ctx.font_size = 14
+                ctx.font_size = FONT_SIZE_GAUGE
                 ctx.text_align = ctx.CENTER
                 ctx.text_baseline = ctx.MIDDLE
                 ctx.move_to(x, y).text("0")
@@ -489,7 +506,7 @@ class SimpleSurveyApp(app.App):
                 
             if draw_center_text:
                 ctx.rgb(1.0, 1.0, 1.0)
-                ctx.font_size = 14
+                ctx.font_size = FONT_SIZE_GAUGE
                 ctx.text_align = ctx.CENTER
                 ctx.text_baseline = ctx.MIDDLE
                 ctx.move_to(x, y).text(str(total_votes))
@@ -498,7 +515,7 @@ class SimpleSurveyApp(app.App):
 
     def _draw_option_labels(self, ctx, options):
         ctx.save()
-        ctx.font_size = 11
+        ctx.font_size = FONT_SIZE_OPTION_LBL
         ctx.text_baseline = ctx.MIDDLE
         
         for opt in options:
@@ -541,14 +558,14 @@ class SimpleSurveyApp(app.App):
         ctx.save()
         # Title
         ctx.rgb(0.5, 0.8, 0.5)
-        ctx.font_size = 10
+        ctx.font_size = FONT_SIZE_TITLE
         ctx.text_align = ctx.CENTER
         ctx.text_baseline = getattr(ctx, "TOP", "top")
         ctx.move_to(0, -95).text(self.current_survey["name"])
         
         # Question
         ctx.rgb(1.0, 1.0, 1.0)
-        ctx.font_size = 14
+        ctx.font_size = FONT_SIZE_QUESTION_LARGE
         ctx.text_align = ctx.CENTER
         ctx.text_baseline = ctx.MIDDLE
         
@@ -560,7 +577,7 @@ class SimpleSurveyApp(app.App):
             
         # Prompt
         ctx.rgb(0.7, 0.7, 0.7)
-        ctx.font_size = 12
+        ctx.font_size = FONT_SIZE_PROMPT
         ctx.text_align = ctx.CENTER
         ctx.text_baseline = ctx.MIDDLE
         ctx.move_to(0, 40).text("Press any key")
@@ -568,7 +585,7 @@ class SimpleSurveyApp(app.App):
         
         # Exit instruction
         ctx.rgb(0.9, 0.3, 0.3)
-        ctx.font_size = 9
+        ctx.font_size = FONT_SIZE_EXIT_INSTRUCTION
         ctx.text_align = ctx.CENTER
         ctx.move_to(0, 85).text("CANCEL: Back")
         ctx.restore()
@@ -577,11 +594,11 @@ class SimpleSurveyApp(app.App):
         ctx.save()
         
         # Circular gauge surrounding the screen
-        self._draw_circular_gauge(ctx, 0, 0, 114, 6, self.current_survey["options"], draw_center_text=False)
+        self._draw_circular_gauge(ctx, 0, 0, 114, 10, self.current_survey["options"], draw_center_text=False)
         
         # Question in the center
         ctx.rgb(1.0, 1.0, 1.0)
-        ctx.font_size = 13
+        ctx.font_size = FONT_SIZE_QUESTION_MID
         ctx.text_align = ctx.CENTER
         ctx.text_baseline = ctx.MIDDLE
         
@@ -595,7 +612,7 @@ class SimpleSurveyApp(app.App):
             ctx.move_to(0, start_y + idx * 16).text(line)
             
         ctx.rgb(0.7, 0.7, 0.7)
-        ctx.font_size = 11
+        ctx.font_size = FONT_SIZE_POLLING_VOTES
         ctx.move_to(0, start_y + len(lines) * 16 + 8).text(f"Votes: {total_votes}")
         
         # Option labels
@@ -611,7 +628,7 @@ class SimpleSurveyApp(app.App):
             ctx.rectangle(-85, -30, 170, 60).stroke()
             
             ctx.rgb(1.0, 1.0, 1.0)
-            ctx.font_size = 11
+            ctx.font_size = FONT_SIZE_BANNER
             ctx.text_align = ctx.CENTER
             ctx.text_baseline = ctx.MIDDLE
             
@@ -659,7 +676,7 @@ class SimpleSurveyApp(app.App):
             ctx.rgb(fade_pct, fade_pct, fade_pct)
             
         # Large text in center of screen
-        ctx.font_size = 20
+        ctx.font_size = FONT_SIZE_SUCCESS_LBL
         ctx.text_align = ctx.CENTER
         ctx.text_baseline = ctx.MIDDLE
         
@@ -676,7 +693,7 @@ class SimpleSurveyApp(app.App):
                 votes_count = o["votes"]
                 break
         
-        ctx.font_size = 14
+        ctx.font_size = FONT_SIZE_SUCCESS_VOTES
         ctx.move_to(0, start_y + len(lines) * 24 + 10).text(f"Votes: {votes_count}")
             
         ctx.restore()
@@ -685,14 +702,14 @@ class SimpleSurveyApp(app.App):
         ctx.save()
         # Survey Name
         ctx.rgb(0.5, 0.8, 0.5)
-        ctx.font_size = 10
+        ctx.font_size = FONT_SIZE_RESULTS_TITLE
         ctx.text_align = ctx.CENTER
         ctx.text_baseline = getattr(ctx, "TOP", "top")
         ctx.move_to(0, -100).text(self.current_survey["name"])
         
         # Question
         ctx.rgb(1.0, 1.0, 1.0)
-        ctx.font_size = 12
+        ctx.font_size = FONT_SIZE_RESULTS_QUESTION
         question = self.current_survey["question"]
         lines = self._wrap_text(question, ctx, 180)
         for idx, line in enumerate(lines[:2]):
@@ -706,7 +723,7 @@ class SimpleSurveyApp(app.App):
         options = self.current_survey["options"]
         total_votes = sum(o["votes"] for o in options)
         
-        ctx.font_size = 10
+        ctx.font_size = FONT_SIZE_RESULTS_DETAILS
         ctx.text_baseline = ctx.MIDDLE
         
         for idx, opt in enumerate(options[:6]):
@@ -728,7 +745,7 @@ class SimpleSurveyApp(app.App):
             ctx.move_to(x + 12, y).text(label_text)
             
         ctx.rgb(0.6, 0.6, 0.6)
-        ctx.font_size = 9
+        ctx.font_size = FONT_SIZE_RESULTS_EXIT
         ctx.text_align = ctx.CENTER
         ctx.move_to(0, 95).text("Press CANCEL to exit")
         ctx.restore()
