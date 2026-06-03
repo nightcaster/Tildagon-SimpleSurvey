@@ -452,7 +452,7 @@ class SimpleSurveyApp(app.App):
             lines.append(current_line)
         return lines
 
-    def _draw_circular_gauge(self, ctx, x, y, radius, thickness, options):
+    def _draw_circular_gauge(self, ctx, x, y, radius, thickness, options, draw_center_text=True):
         ctx.save()
         ctx.line_width = thickness
         
@@ -463,11 +463,12 @@ class SimpleSurveyApp(app.App):
             ctx.begin_path()
             ctx.arc(x, y, radius, 0, 2 * math.pi, False).stroke()
             
-            ctx.rgb(0.5, 0.5, 0.5)
-            ctx.font_size = 14
-            ctx.text_align = ctx.CENTER
-            ctx.text_baseline = ctx.MIDDLE
-            ctx.move_to(x, y).text("0")
+            if draw_center_text:
+                ctx.rgb(0.5, 0.5, 0.5)
+                ctx.font_size = 14
+                ctx.text_align = ctx.CENTER
+                ctx.text_baseline = ctx.MIDDLE
+                ctx.move_to(x, y).text("0")
         else:
             start_angle = -math.pi / 2
             for opt in options:
@@ -486,11 +487,12 @@ class SimpleSurveyApp(app.App):
                 ctx.arc(x, y, radius, start_angle, end_angle, False).stroke()
                 start_angle = end_angle
                 
-            ctx.rgb(1.0, 1.0, 1.0)
-            ctx.font_size = 14
-            ctx.text_align = ctx.CENTER
-            ctx.text_baseline = ctx.MIDDLE
-            ctx.move_to(x, y).text(str(total_votes))
+            if draw_center_text:
+                ctx.rgb(1.0, 1.0, 1.0)
+                ctx.font_size = 14
+                ctx.text_align = ctx.CENTER
+                ctx.text_baseline = ctx.MIDDLE
+                ctx.move_to(x, y).text(str(total_votes))
             
         ctx.restore()
 
@@ -502,6 +504,7 @@ class SimpleSurveyApp(app.App):
         for opt in options:
             btn_num = opt["button"]
             lbl = opt["label"]
+            votes = opt["votes"]
             color = opt["color"]
             color_float = tuple(c / 255.0 for c in color)
             
@@ -510,21 +513,27 @@ class SimpleSurveyApp(app.App):
             if btn_num == 1:
                 ctx.text_align = ctx.CENTER
                 ctx.move_to(0, -68).text(lbl)
+                ctx.move_to(0, -56).text(f"({votes})")
             elif btn_num == 2:
                 ctx.text_align = ctx.RIGHT
                 ctx.move_to(75, -45).text(lbl)
+                ctx.move_to(75, -33).text(f"({votes})")
             elif btn_num == 3:
                 ctx.text_align = ctx.RIGHT
                 ctx.move_to(75, 45).text(lbl)
+                ctx.move_to(75, 57).text(f"({votes})")
             elif btn_num == 4:
                 ctx.text_align = ctx.CENTER
                 ctx.move_to(0, 68).text(lbl)
+                ctx.move_to(0, 80).text(f"({votes})")
             elif btn_num == 5:
                 ctx.text_align = ctx.LEFT
                 ctx.move_to(-75, 45).text(lbl)
+                ctx.move_to(-75, 57).text(f"({votes})")
             elif btn_num == 6:
                 ctx.text_align = ctx.LEFT
                 ctx.move_to(-75, -45).text(lbl)
+                ctx.move_to(-75, -33).text(f"({votes})")
                 
         ctx.restore()
 
@@ -566,18 +575,28 @@ class SimpleSurveyApp(app.App):
 
     def _draw_active_polling(self, ctx):
         ctx.save()
-        # Question at top
-        ctx.rgb(0.8, 0.8, 0.8)
-        ctx.font_size = 12
+        
+        # Circular gauge surrounding the screen
+        self._draw_circular_gauge(ctx, 0, 0, 114, 6, self.current_survey["options"], draw_center_text=False)
+        
+        # Question in the center
+        ctx.rgb(1.0, 1.0, 1.0)
+        ctx.font_size = 13
         ctx.text_align = ctx.CENTER
-        ctx.text_baseline = getattr(ctx, "TOP", "top")
+        ctx.text_baseline = ctx.MIDDLE
+        
         question = self.current_survey["question"]
-        lines = self._wrap_text(question, ctx, 180)
-        for idx, line in enumerate(lines[:2]):
-            ctx.move_to(0, -100 + idx * 14).text(line)
+        lines = self._wrap_text(question, ctx, 130)
+        
+        total_votes = sum(o["votes"] for o in self.current_survey["options"])
+        
+        start_y = -((len(lines) + 1) * 8)
+        for idx, line in enumerate(lines):
+            ctx.move_to(0, start_y + idx * 16).text(line)
             
-        # Circular gauge in center
-        self._draw_circular_gauge(ctx, 0, 10, 32, 10, self.current_survey["options"])
+        ctx.rgb(0.7, 0.7, 0.7)
+        ctx.font_size = 11
+        ctx.move_to(0, start_y + len(lines) * 16 + 8).text(f"Votes: {total_votes}")
         
         # Option labels
         self._draw_option_labels(ctx, self.current_survey["options"])
@@ -646,9 +665,19 @@ class SimpleSurveyApp(app.App):
         
         # Wrapping options label
         lines = self._wrap_text(self.success_label, ctx, 180)
-        start_y = -((len(lines) - 1) * 12)
+        start_y = -((len(lines) - 1) * 12) - 10
         for idx, line in enumerate(lines):
             ctx.move_to(0, start_y + idx * 24).text(line)
+            
+        # Draw count below option text
+        votes_count = 0
+        for o in self.current_survey["options"]:
+            if o["button"] == self.success_button:
+                votes_count = o["votes"]
+                break
+        
+        ctx.font_size = 14
+        ctx.move_to(0, start_y + len(lines) * 24 + 10).text(f"Votes: {votes_count}")
             
         ctx.restore()
 
