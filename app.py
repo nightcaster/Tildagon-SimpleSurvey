@@ -168,18 +168,28 @@ class SimpleSurveyApp(app.App):
             
         self.menu = Menu(
             self,
-            menu_items=["Start Polling", "View Results", "Delete Survey", "Back"],
+            menu_items=["Start Polling", "Edit Survey", "View Results", "Delete Survey", "Back"],
             select_handler=self._handle_survey_menu_select,
             back_handler=self._go_to_main_menu
         )
 
     def _handle_survey_menu_select(self, item, idx):
         if item == "Start Polling":
+            has_question = bool(self.current_survey.get("question", "").strip())
+            has_options = len(self.current_survey.get("options", [])) > 0
+            
             if self.menu:
                 self.menu._cleanup()
                 self.menu = None
-            self.state = "ACTIVE_POLLING"
-            self._set_option_leds()
+                
+            if has_question and has_options:
+                self.state = "ACTIVE_POLLING"
+                self._set_option_leds()
+            else:
+                self.state = "START_ERROR"
+        elif item == "Edit Survey":
+            self.state = "EDIT_SURVEY"
+            self._init_edit_survey_menu()
         elif item == "View Results":
             if self.menu:
                 self.menu._cleanup()
@@ -197,30 +207,211 @@ class SimpleSurveyApp(app.App):
         self.state = "MAIN_MENU"
         self._init_main_menu()
 
-    def _handle_menu_select(self, item, idx):
-        self._menu_result = item
-
-    async def _run_creator_flow(self):
+    async def _run_creation_flow(self):
         self.state = "CREATING_IN_PROGRESS"
         
-        # 1. Get Survey Name
         dialog = TextDialog("Survey Name", self)
+        self.dialog = dialog
         name = await dialog.run(self._render_update)
+        self.dialog = None
+        
         if not name:
             self.state = "MAIN_MENU"
             self._init_main_menu()
             return
+            
+        import time
+        survey_id = f"survey_{int(time.time())}"
+        new_survey = {
+            "id": survey_id,
+            "name": name,
+            "question": "",
+            "options": []
+        }
+        self.surveys.append(new_survey)
+        self._save_surveys()
+        
+        self.current_survey = new_survey
+        self.state = "EDIT_SURVEY"
+        self._init_edit_survey_menu()
+        await self._render_update()
 
-        # 2. Get Question
+    def _get_option_for_button(self, btn_num):
+        for opt in self.current_survey["options"]:
+            if opt["button"] == btn_num:
+                return opt
+        return None
+
+    def _init_edit_survey_menu(self):
+        if self.menu:
+            self.menu._cleanup()
+            
+        items = [
+            f"Name: {self.current_survey['name']}",
+            f"Question: {self.current_survey['question'] if self.current_survey['question'] else '(None)'}"
+        ]
+        for btn in range(1, 7):
+            letter = BUTTON_NUM_TO_LETTER[btn]
+            opt = self._get_option_for_button(btn)
+            if opt:
+                items.append(f"Slot {letter}: {opt['label']}")
+            else:
+                items.append(f"Slot {letter}: [Empty]")
+        items.append("Back")
+        
+        self.menu = Menu(
+            self,
+            menu_items=items,
+            select_handler=self._handle_edit_survey_select,
+            back_handler=self._handle_edit_survey_back
+        )
+
+    def _handle_edit_survey_select(self, item, idx):
+        if idx == 0:
+            self._edit_survey_name()
+        elif idx == 1:
+            self._edit_survey_question()
+        elif 2 <= idx <= 7:
+            btn_num = idx - 1
+            self._edit_survey_slot(btn_num)
+        elif idx == 8:
+            self._handle_edit_survey_back()
+
+    def _handle_edit_survey_back(self):
+        self.state = "SURVEY_MENU"
+        self._init_survey_menu()
+
+    def _edit_survey_name(self):
+        asyncio.create_task(self._async_edit_name())
+
+    async def _async_edit_name(self):
+        self.state = "EDITING_SURVEY_DETAILS"
+        if self.menu:
+            self.menu._cleanup()
+            self.menu = None
+        dialog = TextDialog("Survey Name", self)
+        self.dialog = dialog
+        new_name = await dialog.run(self._render_update)
+        self.dialog = None
+        
+        if new_name:
+            self.current_survey["name"] = new_name
+            self._save_surveys()
+            
+        self.state = "EDIT_SURVEY"
+        self._init_edit_survey_menu()
+
+    def _edit_survey_question(self):
+        asyncio.create_task(self._async_edit_question())
+
+    async def _async_edit_question(self):
+        self.state = "EDITING_SURVEY_DETAILS"
+        if self.menu:
+            self.menu._cleanup()
+            self.menu = None
         dialog = TextDialog("Question", self)
-        question = await dialog.run(self._render_update)
-        if not question:
-            self.state = "MAIN_MENU"
-            self._init_main_menu()
-            return
+        self.dialog = dialog
+        new_q = await dialog.run(self._render_update)
+        self.dialog = None
+        
+        if new_q:
+            self.current_survey["question"] = new_q
+            self._save_surveys()
+            
+        self.state = "EDIT_SURVEY"
+        self._init_edit_survey_menu()
 
-        # 3. Get Options
-        options = []
+    def _edit_survey_slot(self, btn_num):
+        opt = self._get_option_for_button(btn_num)
+        if opt is None:
+            asyncio.create_task(self._async_create_slot_option(btn_num))
+        else:
+            self.editing_option = opt
+            self.state = "EDIT_SLOT"
+            self._init_edit_slot_menu()
+
+    async def _async_create_slot_option(self, btn_num):
+        self.state = "EDITING_SURVEY_DETAILS"
+        if self.menu:
+            self.menu._cleanup()
+            self.menu = None
+        dialog = TextDialog(f"Opt {BUTTON_NUM_TO_LETTER[btn_num]} Label", self)
+        self.dialog = dialog
+        label = await dialog.run(self._render_update)
+        self.dialog = None
+        
+        if label:
+            opt = {
+                "label": label,
+                "color": [255, 0, 0],
+                "button": btn_num,
+                "votes": 0
+            }
+            self.current_survey["options"].append(opt)
+            self._save_surveys()
+            
+            self.editing_option = opt
+            self.state = "EDIT_SLOT"
+            self._init_edit_slot_menu()
+        else:
+            self.state = "EDIT_SURVEY"
+            self._init_edit_survey_menu()
+
+    def _init_edit_slot_menu(self):
+        if self.menu:
+            self.menu._cleanup()
+            
+        color_name = self._get_color_name(self.editing_option["color"])
+        items = [
+            f"Value: {self.editing_option['label']}",
+            f"Color: {color_name}",
+            "Clear Option",
+            "Back"
+        ]
+        self.menu = Menu(
+            self,
+            menu_items=items,
+            select_handler=self._handle_edit_slot_select,
+            back_handler=self._handle_edit_slot_back
+        )
+
+    def _handle_edit_slot_select(self, item, idx):
+        if idx == 0:
+            asyncio.create_task(self._async_edit_slot_value())
+        elif idx == 1:
+            self._init_color_select_menu()
+        elif idx == 2:
+            self.current_survey["options"].remove(self.editing_option)
+            self._save_surveys()
+            self.editing_option = None
+            self.state = "EDIT_SURVEY"
+            self._init_edit_survey_menu()
+        elif idx == 3:
+            self._handle_edit_slot_back()
+
+    def _handle_edit_slot_back(self):
+        self.editing_option = None
+        self.state = "EDIT_SURVEY"
+        self._init_edit_survey_menu()
+
+    async def _async_edit_slot_value(self):
+        self.state = "EDITING_SURVEY_DETAILS"
+        if self.menu:
+            self.menu._cleanup()
+            self.menu = None
+        dialog = TextDialog("Option Value", self)
+        self.dialog = dialog
+        new_val = await dialog.run(self._render_update)
+        self.dialog = None
+        
+        if new_val:
+            self.editing_option["label"] = new_val
+            self._save_surveys()
+            
+        self.state = "EDIT_SLOT"
+        self._init_edit_slot_menu()
+
+    def _get_color_name(self, rgb):
         color_options = [
             ("Red", [255, 0, 0]),
             ("Yellow", [255, 255, 0]),
@@ -231,92 +422,168 @@ class SimpleSurveyApp(app.App):
             ("Orange", [255, 128, 0]),
             ("White", [255, 255, 255])
         ]
-        preferred_buttons = [1, 4, 2, 5, 3, 6]
+        for name, val in color_options:
+            if val == rgb:
+                return name
+        return "Custom"
+
+    def _init_color_select_menu(self):
+        if self.menu:
+            self.menu._cleanup()
+            
+        color_items = [
+            "Red",
+            "Yellow",
+            "Green",
+            "Cyan",
+            "Blue",
+            "Magenta",
+            "Orange",
+            "White",
+            "Custom RGB",
+            "Back"
+        ]
         
-        for i in range(6):
-            dialog = TextDialog(f"Opt {i+1} Label (blank to end)", self)
-            label = await dialog.run(self._render_update)
-            if not label:
-                break
-                
-            # Select color using Menu
-            color_items = [c[0] for c in color_options]
-            self._menu_result = None
-            if self.menu:
-                self.menu._cleanup()
-                
-            self.menu = Menu(
-                self,
-                menu_items=color_items,
-                select_handler=self._handle_menu_select
-            )
-            await self._render_update()
-            
-            while self._menu_result is None:
-                self.update(50)
-                await self._render_update()
-                await asyncio.sleep(0.05)
-                
-            color_name = self._menu_result
-            self._menu_result = None
-            
-            color_val = [255, 255, 255]
-            for c in color_options:
-                if c[0] == color_name:
-                    color_val = c[1]
+        current_color = self.editing_option["color"]
+        current_name = self._get_color_name(current_color)
+        
+        initial_pos = 0
+        if current_name == "Custom":
+            initial_pos = 8
+        else:
+            for i, name in enumerate(color_items):
+                if name == current_name:
+                    initial_pos = i
                     break
                     
-            # Select Button mapping using Menu
-            assigned_buttons = [opt["button"] for opt in options]
-            available_buttons = [b for b in preferred_buttons if b not in assigned_buttons]
-            button_items = [f"Button {BUTTON_NUM_TO_LETTER[b]} ({BUTTON_NUM_TO_NAME[b]})" for b in available_buttons]
-            
-            if self.menu:
-                self.menu._cleanup()
-                
-            self.menu = Menu(
-                self,
-                menu_items=button_items,
-                select_handler=self._handle_menu_select
-            )
-            await self._render_update()
-            
-            while self._menu_result is None:
-                self.update(50)
-                await self._render_update()
-                await asyncio.sleep(0.05)
-                
-            button_choice = self._menu_result
-            self._menu_result = None
-            
-            chosen_letter = button_choice.split(" ")[1]
-            chosen_btn = BUTTON_LETTER_TO_NUM[chosen_letter]
-            
-            options.append({
-                "label": label,
-                "color": color_val,
-                "button": chosen_btn,
-                "votes": 0
-            })
-            
-        if len(options) == 0:
-            self.state = "MAIN_MENU"
-            self._init_main_menu()
-            return
-            
-        import time
-        survey_id = f"survey_{int(time.time())}"
-        self.surveys.append({
-            "id": survey_id,
-            "name": name,
-            "question": question,
-            "options": options
-        })
-        self._save_surveys()
+        self.custom_rgb = list(current_color)
+        self.state = "COLOR_SELECT"
         
-        self.state = "MAIN_MENU"
-        self._init_main_menu()
-        await self._render_update()
+        self.menu = Menu(
+            self,
+            menu_items=color_items,
+            select_handler=self._handle_color_select,
+            change_handler=self._handle_color_menu_change,
+            back_handler=self._handle_color_back,
+            position=initial_pos
+        )
+        self._handle_color_menu_change(color_items[initial_pos])
+
+    def _handle_color_menu_change(self, item):
+        color_map = {
+            "Red": [255, 0, 0],
+            "Yellow": [255, 255, 0],
+            "Green": [0, 255, 0],
+            "Cyan": [0, 255, 255],
+            "Blue": [0, 0, 255],
+            "Magenta": [255, 0, 255],
+            "Orange": [255, 128, 0],
+            "White": [255, 255, 255]
+        }
+        if item in color_map:
+            self._set_button_leds_only(self.editing_option["button"], color_map[item])
+        elif item == "Custom RGB":
+            self._set_button_leds_only(self.editing_option["button"], self.custom_rgb)
+        else:
+            self._clear_leds()
+
+    def _handle_color_select(self, item, idx):
+        color_map = {
+            "Red": [255, 0, 0],
+            "Yellow": [255, 255, 0],
+            "Green": [0, 255, 0],
+            "Cyan": [0, 255, 255],
+            "Blue": [0, 0, 255],
+            "Magenta": [255, 0, 255],
+            "Orange": [255, 128, 0],
+            "White": [255, 255, 255]
+        }
+        if item in color_map:
+            self.editing_option["color"] = color_map[item]
+            self._save_surveys()
+            self._clear_leds()
+            self.state = "EDIT_SLOT"
+            self._init_edit_slot_menu()
+        elif item == "Custom RGB":
+            self._init_custom_rgb_menu()
+        elif item == "Back":
+            self._handle_color_back()
+
+    def _handle_color_back(self):
+        self._clear_leds()
+        self.state = "EDIT_SLOT"
+        self._init_edit_slot_menu()
+
+    def _init_custom_rgb_menu(self):
+        if self.menu:
+            self.menu._cleanup()
+            
+        items = [
+            f"R: {self.custom_rgb[0]}",
+            f"G: {self.custom_rgb[1]}",
+            f"B: {self.custom_rgb[2]}",
+            "Confirm",
+            "Cancel"
+        ]
+        self.state = "CUSTOM_RGB_MENU"
+        self.menu = Menu(
+            self,
+            menu_items=items,
+            select_handler=self._handle_custom_rgb_select,
+            back_handler=self._handle_custom_rgb_back
+        )
+        self._set_button_leds_only(self.editing_option["button"], self.custom_rgb)
+
+    def _handle_custom_rgb_select(self, item, idx):
+        if idx == 0:
+            self._start_edit_channel("R")
+        elif idx == 1:
+            self._start_edit_channel("G")
+        elif idx == 2:
+            self._start_edit_channel("B")
+        elif idx == 3:
+            self.editing_option["color"] = list(self.custom_rgb)
+            self._save_surveys()
+            self._clear_leds()
+            self.state = "COLOR_SELECT"
+            self._init_color_select_menu()
+        elif idx == 4:
+            self._clear_leds()
+            self.state = "COLOR_SELECT"
+            self._init_color_select_menu()
+
+    def _handle_custom_rgb_back(self):
+        self._clear_leds()
+        self.state = "COLOR_SELECT"
+        self._init_color_select_menu()
+
+    def _start_edit_channel(self, channel):
+        if self.menu:
+            self.menu._cleanup()
+            self.menu = None
+            
+        self.state = "EDIT_CHANNEL"
+        self.editing_channel = channel
+
+    def _adjust_channel(self, val):
+        idx = {"R": 0, "G": 1, "B": 2}[self.editing_channel]
+        new_val = self.custom_rgb[idx] + val
+        if new_val < 0:
+            new_val = 0
+        elif new_val > 255:
+            new_val = 255
+        self.custom_rgb[idx] = new_val
+        self._set_button_leds_only(self.editing_option["button"], self.custom_rgb)
+
+    def _set_button_leds_only(self, button_num, color):
+        eventbus.emit(PatternDisable())
+        for i in range(19):
+            tildagonos.leds[i] = (0, 0, 0)
+        scaled = self._scale_color(color)
+        leds = self._get_button_leds(button_num)
+        for led_idx in leds:
+            tildagonos.leds[led_idx] = scaled
+        tildagonos.leds.write()
 
     def _get_btn_num(self, event):
         for k, v in BUTTON_TYPES.items():
@@ -327,7 +594,11 @@ class SimpleSurveyApp(app.App):
     def _handle_buttondown(self, event):
         if self.dialog:
             return
-        if self.state in ["MAIN_MENU", "SURVEY_MENU", "CREATING", "CREATING_IN_PROGRESS"]:
+        if self.state in [
+            "MAIN_MENU", "SURVEY_MENU", "CREATING", "CREATING_IN_PROGRESS",
+            "EDIT_SURVEY", "EDITING_SURVEY_DETAILS", "EDIT_SLOT",
+            "COLOR_SELECT", "CUSTOM_RGB_MENU"
+        ]:
             return
             
         btn_num = self._get_btn_num(event)
@@ -338,7 +609,26 @@ class SimpleSurveyApp(app.App):
             return
         self.held_buttons.add(btn_num)
         
-        if self.state == "ACTIVE_POLLING":
+        if self.state == "EDIT_CHANNEL":
+            if btn_num == 1:
+                self._adjust_channel(15)
+            elif btn_num == 4:
+                self._adjust_channel(-15)
+            elif btn_num == 3 or btn_num == 6:
+                self.state = "CUSTOM_RGB_MENU"
+                self._init_custom_rgb_menu()
+            if self._render_update:
+                asyncio.create_task(self._render_update())
+            return
+        elif self.state == "START_ERROR":
+            if btn_num == 6:
+                self.held_buttons.clear()
+                self.state = "SURVEY_MENU"
+                self._init_survey_menu()
+                if self._render_update:
+                    asyncio.create_task(self._render_update())
+            return
+        elif self.state == "ACTIVE_POLLING":
             if btn_num == 6:
                 # If there's an option on button 6, use hold timeout, otherwise exit immediately
                 has_btn_6_option = any(opt["button"] == 6 for opt in self.current_survey["options"])
@@ -381,7 +671,11 @@ class SimpleSurveyApp(app.App):
                 asyncio.create_task(self._render_update())
             return
             
-        if self.state in ["MAIN_MENU", "SURVEY_MENU", "CREATING", "CREATING_IN_PROGRESS"]:
+        if self.state in [
+            "MAIN_MENU", "SURVEY_MENU", "CREATING", "CREATING_IN_PROGRESS",
+            "EDIT_SURVEY", "EDITING_SURVEY_DETAILS", "EDIT_SLOT",
+            "COLOR_SELECT", "CUSTOM_RGB_MENU", "START_ERROR"
+        ]:
             return
             
         if self.state == "ACTIVE_POLLING" and btn_num == 6:
@@ -507,7 +801,10 @@ class SimpleSurveyApp(app.App):
 
     def update(self, delta):
         dt = delta / 1000.0
-        if self.state in ["MAIN_MENU", "SURVEY_MENU", "CREATING_IN_PROGRESS"] and self.menu:
+        if self.state in [
+            "MAIN_MENU", "SURVEY_MENU", "CREATING_IN_PROGRESS",
+            "EDIT_SURVEY", "EDIT_SLOT", "COLOR_SELECT", "CUSTOM_RGB_MENU"
+        ] and self.menu:
             self.menu.update(delta)
             
         if self.state == "ACTIVE_POLLING" and self.cancel_is_held:
@@ -809,10 +1106,58 @@ class SimpleSurveyApp(app.App):
         ctx.move_to(0, 95).text("Press CANCEL (F) to exit")
         ctx.restore()
 
+    def _draw_edit_channel(self, ctx):
+        ctx.save()
+        clear_background(ctx)
+        
+        # Title
+        ctx.rgb(1.0, 1.0, 1.0)
+        ctx.font_size = 20
+        ctx.text_align = ctx.CENTER
+        ctx.text_baseline = ctx.MIDDLE
+        ctx.move_to(0, -60).text(f"Edit {self.editing_channel} Channel")
+        
+        # Value
+        idx = {"R": 0, "G": 1, "B": 2}[self.editing_channel]
+        val = self.custom_rgb[idx]
+        ctx.font_size = 40
+        ctx.move_to(0, 0).text(str(val))
+        
+        # Helpers
+        ctx.rgb(0.7, 0.7, 0.7)
+        ctx.font_size = 14
+        ctx.move_to(0, 50).text("UP / DOWN to adjust")
+        ctx.move_to(0, 70).text("CONFIRM / CANCEL to save")
+        ctx.restore()
+
+    def _draw_start_error(self, ctx):
+        ctx.save()
+        clear_background(ctx)
+        
+        ctx.rgb(1.0, 0.2, 0.2)
+        ctx.font_size = 20
+        ctx.text_align = ctx.CENTER
+        ctx.text_baseline = ctx.MIDDLE
+        ctx.move_to(0, -50).text("Cannot Start Poll")
+        
+        ctx.rgb(1.0, 1.0, 1.0)
+        ctx.font_size = 14
+        ctx.move_to(0, -10).text("Survey needs a")
+        ctx.move_to(0, 10).text("question and at least")
+        ctx.move_to(0, 30).text("one option to start.")
+        
+        ctx.rgb(0.7, 0.7, 0.7)
+        ctx.font_size = 12
+        ctx.move_to(0, 75).text("Press CANCEL (F) to return")
+        ctx.restore()
+
     def draw(self, ctx):
         clear_background(ctx)
         
-        if self.state in ["MAIN_MENU", "SURVEY_MENU", "CREATING_IN_PROGRESS"]:
+        if self.state in [
+            "MAIN_MENU", "SURVEY_MENU", "CREATING_IN_PROGRESS",
+            "EDIT_SURVEY", "EDIT_SLOT", "COLOR_SELECT", "CUSTOM_RGB_MENU"
+        ]:
             if self.menu:
                 self.menu.draw(ctx)
 
@@ -822,6 +1167,10 @@ class SimpleSurveyApp(app.App):
             self._draw_vote_success(ctx)
         elif self.state == "VIEW_RESULTS":
             self._draw_view_results(ctx)
+        elif self.state == "EDIT_CHANNEL":
+            self._draw_edit_channel(ctx)
+        elif self.state == "START_ERROR":
+            self._draw_start_error(ctx)
             
         for overlay in self.overlays:
             overlay.draw(ctx)
@@ -843,7 +1192,7 @@ class SimpleSurveyApp(app.App):
                 await render_update()
                 
             if self.state == "CREATING":
-                await self._run_creator_flow()
+                await self._run_creation_flow()
                 
             await asyncio.sleep(0.05)
             last_time = cur_time
