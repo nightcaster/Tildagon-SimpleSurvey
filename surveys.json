@@ -1,1 +1,133 @@
-[{"id": "sample_tea_coffee", "name": "Tea vs Coffee", "question": "Choose your drink", "options": [{"label": "Tea", "color": [0, 255, 0], "button": 1, "votes": 1}, {"label": "Coffee", "color": [255, 128, 0], "button": 4, "votes": 0}]}, {"id": "sample_lunch", "name": "Lunch Poll", "question": "What's for lunch?", "options": [{"label": "Pizza", "color": [245, 80, 137], "button": 5, "votes": 0}, {"label": "Burger", "color": [249, 226, 0], "button": 1, "votes": 0}, {"label": "Salad", "color": [46, 173, 217], "button": 2, "votes": 0}]}]
+[
+    {
+        "id": "sample_tea_coffee",
+        "name": "Tea vs Coffee",
+        "question": "Choose your drink",
+        "options": [
+            {
+                "label": "Tea",
+                "color": [
+                    0,
+                    255,
+                    0
+                ],
+                "button": 1,
+                "votes": 13
+            },
+            {
+                "label": "Coffee",
+                "color": [
+                    255,
+                    128,
+                    0
+                ],
+                "button": 4,
+                "votes": 4
+            }
+        ]
+    },
+    {
+        "id": "sample_lunch",
+        "name": "Lunch Poll",
+        "question": "What's for lunch?",
+        "options": [
+            {
+                "label": "Pizza",
+                "color": [
+                    245,
+                    80,
+                    137
+                ],
+                "button": 5,
+                "votes": 0
+            },
+            {
+                "label": "Burger",
+                "color": [
+                    249,
+                    226,
+                    0
+                ],
+                "button": 1,
+                "votes": 0
+            },
+            {
+                "label": "Salad",
+                "color": [
+                    46,
+                    173,
+                    217
+                ],
+                "button": 2,
+                "votes": 0
+            }
+        ]
+    },
+    {
+        "id": "sample_language",
+        "name": "Programming Language",
+        "question": "Which is best?",
+        "options": [
+            {
+                "label": "PHP",
+                "color": [
+                    155,
+                    89,
+                    182
+                ],
+                "button": 6,
+                "votes": 0
+            },
+            {
+                "label": "Rust",
+                "color": [
+                    230,
+                    92,
+                    0
+                ],
+                "button": 1,
+                "votes": 0
+            },
+            {
+                "label": "JavaScript",
+                "color": [
+                    241,
+                    196,
+                    15
+                ],
+                "button": 2,
+                "votes": 0
+            },
+            {
+                "label": "Python",
+                "color": [
+                    46,
+                    204,
+                    113
+                ],
+                "button": 3,
+                "votes": 0
+            },
+            {
+                "label": "C++/C#/C",
+                "color": [
+                    41,
+                    128,
+                    185
+                ],
+                "button": 4,
+                "votes": 0
+            },
+            {
+                "label": "Go",
+                "color": [
+                    0,
+                    204,
+                    204
+                ],
+                "button": 5,
+                "votes": 0
+            }
+        ]
+    }
+]

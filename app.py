@@ -691,34 +691,53 @@ class SimpleSurveyApp(app.App):
         for idx, line in enumerate(lines[:2]):
             ctx.move_to(0, -85 + idx * 14).text(line)
             
-        # Gauge in middle
-        self._draw_circular_gauge(ctx, 0, -5, 28, 8, self.current_survey["options"])
+        # Get bottom of question text
+        q_end_y = -85 + len(lines[:2]) * 14
         
-        # Option summary details
-        start_y = 32
+        # Total votes
         options = self.current_survey["options"]
         total_votes = sum(o["votes"] for o in options)
         
+        ctx.rgb(0.7, 0.7, 0.7)
         ctx.font_size = FONT_SIZE_RESULTS_DETAILS
+        ctx.text_align = ctx.CENTER
         ctx.text_baseline = ctx.MIDDLE
+        ctx.move_to(0, q_end_y + 6).text(f"Total votes: {total_votes}")
+        
+        # Option summary details
+        start_y = q_end_y + 22
+        available_height = 80 - start_y
+        step = min(24, max(15, available_height // len(options))) if len(options) > 0 else 20
         
         for idx, opt in enumerate(options[:6]):
-            col = idx % 2
-            row = idx // 2
-            x = -80 if col == 0 else 10
-            y = start_y + row * 16
+            y = start_y + idx * step
             
             pct = (opt["votes"] / total_votes * 100) if total_votes > 0 else 0
-            label_text = f"{opt['label']}: {opt['votes']} ({pct:.0f}%)"
+            label_text = opt["label"]
+            votes_text = f"{opt['votes']} ({pct:.0f}%)"
             
+            # Draw label (left aligned)
+            ctx.rgb(0.9, 0.9, 0.9)
+            ctx.font_size = FONT_SIZE_RESULTS_DETAILS - 2
+            ctx.text_align = ctx.LEFT
+            ctx.text_baseline = ctx.MIDDLE
+            ctx.move_to(-80, y).text(label_text)
+            
+            # Draw votes/percentage (right aligned)
+            ctx.text_align = ctx.RIGHT
+            ctx.move_to(80, y).text(votes_text)
+            
+            # Draw bar background
+            ctx.rgb(0.15, 0.15, 0.15)
+            ctx.rectangle(-80, y + 7, 160, 4).fill()
+            
+            # Draw colored indicator bar
             color = opt["color"]
             color_float = tuple(c / 255.0 for c in color)
-            
-            ctx.rgb(*color_float).rectangle(x, y - 4, 8, 8).fill()
-            
-            ctx.rgb(0.9, 0.9, 0.9)
-            ctx.text_align = ctx.LEFT
-            ctx.move_to(x + 12, y).text(label_text)
+            ctx.rgb(*color_float)
+            bar_width = int(160 * (pct / 100))
+            if bar_width > 0:
+                ctx.rectangle(-80, y + 7, bar_width, 4).fill()
             
         ctx.rgb(0.6, 0.6, 0.6)
         ctx.font_size = FONT_SIZE_RESULTS_EXIT
