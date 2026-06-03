@@ -507,8 +507,8 @@ class SimpleSurveyApp(app.App):
                 # Calculate button angle
                 theta = -math.pi / 2 + (btn_num - 1) * math.pi / 3
                 
-                # Segment size (max is pi/3 or 60 degrees)
-                angle_size = pct * (math.pi / 3)
+                # Segment size (percentage of the full circle)
+                angle_size = pct * 2 * math.pi
                 start_angle = theta - angle_size / 2
                 end_angle = theta + angle_size / 2
                 
