@@ -496,21 +496,16 @@ class SimpleSurveyApp(app.App):
             ctx.begin_path()
             ctx.arc(x, y, radius, 0, 2 * math.pi, False).stroke()
 
-            # Draw colored gauge segments centered at option buttons
-            for opt in options:
+            # Draw colored gauge segments contiguously, sorted by button number
+            sorted_opts = sorted(options, key=lambda o: o["button"])
+            start_angle = -math.pi / 2
+            for opt in sorted_opts:
                 votes = opt["votes"]
                 if votes == 0:
                     continue
                 pct = votes / total_votes
-                btn_num = opt["button"]
-                
-                # Calculate button angle
-                theta = -math.pi / 2 + (btn_num - 1) * math.pi / 3
-                
-                # Segment size (percentage of the full circle)
                 angle_size = pct * 2 * math.pi
-                start_angle = theta - angle_size / 2
-                end_angle = theta + angle_size / 2
+                end_angle = start_angle + angle_size
                 
                 color = opt["color"]
                 color_float = tuple(c / 255.0 for c in color)
@@ -518,6 +513,7 @@ class SimpleSurveyApp(app.App):
                 
                 ctx.begin_path()
                 ctx.arc(x, y, radius, start_angle, end_angle, False).stroke()
+                start_angle = end_angle
                 
             if draw_center_text:
                 ctx.rgb(1.0, 1.0, 1.0)
@@ -547,25 +543,25 @@ class SimpleSurveyApp(app.App):
                 ctx.move_to(0, -94).text(lbl)
                 ctx.move_to(0, -82).text(f"({votes})")
             elif btn_num == 2:
-                ctx.text_align = ctx.RIGHT
-                ctx.move_to(92, -54).text(lbl)
-                ctx.move_to(92, -42).text(f"({votes})")
+                ctx.text_align = ctx.LEFT
+                ctx.move_to(72, -54).text(lbl)
+                ctx.move_to(72, -42).text(f"({votes})")
             elif btn_num == 3:
-                ctx.text_align = ctx.RIGHT
-                ctx.move_to(92, 54).text(lbl)
-                ctx.move_to(92, 66).text(f"({votes})")
+                ctx.text_align = ctx.LEFT
+                ctx.move_to(72, 54).text(lbl)
+                ctx.move_to(72, 66).text(f"({votes})")
             elif btn_num == 4:
                 ctx.text_align = ctx.CENTER
                 ctx.move_to(0, 94).text(lbl)
                 ctx.move_to(0, 106).text(f"({votes})")
             elif btn_num == 5:
-                ctx.text_align = ctx.LEFT
-                ctx.move_to(-92, 54).text(lbl)
-                ctx.move_to(-92, 66).text(f"({votes})")
+                ctx.text_align = ctx.RIGHT
+                ctx.move_to(-72, 54).text(lbl)
+                ctx.move_to(-72, 66).text(f"({votes})")
             elif btn_num == 6:
-                ctx.text_align = ctx.LEFT
-                ctx.move_to(-92, -54).text(lbl)
-                ctx.move_to(-92, -42).text(f"({votes})")
+                ctx.text_align = ctx.RIGHT
+                ctx.move_to(-72, -54).text(lbl)
+                ctx.move_to(-72, -42).text(f"({votes})")
                 
         ctx.restore()
 
