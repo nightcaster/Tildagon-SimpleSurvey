@@ -2,6 +2,7 @@ import asyncio
 import math
 import app
 import json
+import os
 from events.input import BUTTON_TYPES, ButtonDownEvent
 from tildagonos import tildagonos
 from system.eventbus import eventbus
@@ -42,18 +43,21 @@ class SimpleSurveyApp(app.App):
         # Register for button down events
         eventbus.on(ButtonDownEvent, self._handle_buttondown, self)
 
+    def minimise(self):
+        from system.scheduler.events import RequestStopAppEvent
+        eventbus.emit(RequestStopAppEvent(self))
+
     def _load_surveys(self):
         try:
-            import sys
             try:
                 # Find path relative to app.py
-                app_dir = "/".join(__file__.split("/")[:-1])
+                app_dir = os.path.dirname(__file__)
                 if not app_dir:
                     app_dir = "."
             except Exception:
                 app_dir = "."
             
-            self.data_path = f"{app_dir}/surveys.json"
+            self.data_path = os.path.join(app_dir, "surveys.json")
             
             with open(self.data_path, "r") as f:
                 self.surveys = json.load(f)
@@ -261,7 +265,7 @@ class SimpleSurveyApp(app.App):
             self._handle_view_results_button(event)
 
     def _handle_active_question_button(self, event):
-        if event.button == BUTTON_TYPES["CANCEL"]:
+        if BUTTON_TYPES["CANCEL"] in event.button:
             self.state = "SURVEY_MENU"
             self._init_survey_menu()
             if self._render_update:
@@ -276,7 +280,7 @@ class SimpleSurveyApp(app.App):
     def _handle_active_polling_button(self, event):
         btn_num = None
         for k, v in BUTTON_TYPES.items():
-            if event.button == v:
+            if v in event.button:
                 btn_num = BUTTON_NAME_TO_NUM.get(k)
                 break
                 
@@ -461,7 +465,7 @@ class SimpleSurveyApp(app.App):
         ctx.rgb(0.5, 0.8, 0.5)
         ctx.font_size = 10
         ctx.text_align = ctx.CENTER
-        ctx.text_baseline = ctx.TOP
+        ctx.text_baseline = getattr(ctx, "TOP", "top")
         ctx.move_to(0, -95).text(self.current_survey["name"])
         
         # Question
@@ -497,7 +501,7 @@ class SimpleSurveyApp(app.App):
         ctx.rgb(0.8, 0.8, 0.8)
         ctx.font_size = 12
         ctx.text_align = ctx.CENTER
-        ctx.text_baseline = ctx.TOP
+        ctx.text_baseline = getattr(ctx, "TOP", "top")
         question = self.current_survey["question"]
         lines = self._wrap_text(question, ctx, 180)
         for idx, line in enumerate(lines[:2]):
@@ -529,7 +533,7 @@ class SimpleSurveyApp(app.App):
         ctx.rgb(0.5, 0.8, 0.5)
         ctx.font_size = 10
         ctx.text_align = ctx.CENTER
-        ctx.text_baseline = ctx.TOP
+        ctx.text_baseline = getattr(ctx, "TOP", "top")
         ctx.move_to(0, -100).text(self.current_survey["name"])
         
         # Question
@@ -597,13 +601,22 @@ class SimpleSurveyApp(app.App):
         self._render_update = render_update
         eventbus.emit(PatternDisable())
         
+        import time
+        last_time = time.ticks_ms()
         while self.is_running:
+            cur_time = time.ticks_ms()
+            delta_ticks = time.ticks_diff(cur_time, last_time)
+            
             if self.dialog:
                 await self.dialog.run(render_update)
+            else:
+                self.update(delta_ticks)
+                await render_update()
                 
             if self.state == "CREATING":
                 await self._run_creator_flow()
                 
             await asyncio.sleep(0.05)
+            last_time = cur_time
 
 __app_export__ = SimpleSurveyApp
