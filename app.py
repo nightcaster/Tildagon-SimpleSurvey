@@ -10,21 +10,31 @@ from app_components import Menu, TextDialog, clear_background
 from system.patterndisplay.events import PatternDisable, PatternEnable
 
 # Font Sizes Configurations
-FONT_SIZE_GAUGE = 14
-FONT_SIZE_OPTION_LBL = 13
-FONT_SIZE_TITLE = 12
-FONT_SIZE_QUESTION_LARGE = 15
-FONT_SIZE_PROMPT = 14
-FONT_SIZE_EXIT_INSTRUCTION = 11
-FONT_SIZE_QUESTION_MID = 15
-FONT_SIZE_POLLING_VOTES = 13
-FONT_SIZE_BANNER = 13
-FONT_SIZE_SUCCESS_LBL = 22
-FONT_SIZE_SUCCESS_VOTES = 16
-FONT_SIZE_RESULTS_TITLE = 12
-FONT_SIZE_RESULTS_QUESTION = 14
-FONT_SIZE_RESULTS_DETAILS = 12
-FONT_SIZE_RESULTS_EXIT = 11
+
+# 1. Polling & Option Selection Screen
+FONT_SIZE_QUESTION_MID = 20      # Survey question text inside the outer results circle
+FONT_SIZE_POLLING_VOTES = 16     # Total votes count below the centered question
+FONT_SIZE_OPTION_LBL = 13        # Option labels and individual counts around perimeter
+FONT_SIZE_BANNER = 16            # Hold-to-exit countdown/warning overlay message
+
+# 2. Vote Recorded Screen (Success)
+FONT_SIZE_SUCCESS_LBL = 26       # Centered name of option voted for
+FONT_SIZE_SUCCESS_VOTES = 16     # Option's vote count below option name
+
+# 3. View Results Screen
+FONT_SIZE_RESULTS_TITLE = 12     # Survey name title at the top
+FONT_SIZE_RESULTS_QUESTION = 14  # Survey question text below title
+FONT_SIZE_RESULTS_DETAILS = 12   # Vote count and percent list items at the bottom
+FONT_SIZE_RESULTS_EXIT = 11      # CANCEL button exit instructions at the bottom
+
+# 4. Circular Gauge Helper
+FONT_SIZE_GAUGE = 14             # Center total vote count on standalone gauge
+
+# 5. Legacy / Idle Question Screen (Bypassed)
+FONT_SIZE_TITLE = 12             # Survey name title at the top
+FONT_SIZE_QUESTION_LARGE = 20    # Survey question text in the center
+FONT_SIZE_PROMPT = 17            # "Press any key" prompt text
+FONT_SIZE_EXIT_INSTRUCTION = 14  # Back navigation key instructions
 
 BUTTON_NUM_TO_NAME = {
     1: "UP",
