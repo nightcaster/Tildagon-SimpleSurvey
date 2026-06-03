@@ -586,7 +586,7 @@ class SimpleSurveyApp(app.App):
         
         for opt in options:
             btn_num = opt["button"]
-            lbl = f"[{BUTTON_NUM_TO_LETTER[btn_num]}] {opt['label']}"
+            lbl = opt["label"]
             votes = f"({opt['votes']})"
             color = opt["color"]
             color_float = tuple(c / 255.0 for c in color)
