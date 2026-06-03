@@ -9,6 +9,11 @@ from system.eventbus import eventbus
 from app_components import Menu, TextDialog, clear_background
 from system.patterndisplay.events import PatternDisable, PatternEnable
 
+try:
+    import settings
+except ImportError:
+    settings = None
+
 # Font Sizes Configurations
 
 # 1. Polling & Option Selection Screen
@@ -410,6 +415,17 @@ class SimpleSurveyApp(app.App):
             if self._render_update:
                 asyncio.create_task(self._render_update())
 
+    def _scale_color(self, color):
+        brightness = 0.1
+        if settings:
+            try:
+                b = settings.get("pattern_brightness")
+                if b is not None:
+                    brightness = b
+            except Exception:
+                pass
+        return tuple(int(c * brightness) for c in color)
+
     def _set_option_leds(self):
         eventbus.emit(PatternDisable())
         for i in range(19):
@@ -417,16 +433,17 @@ class SimpleSurveyApp(app.App):
             
         for opt in self.current_survey["options"]:
             btn_num = opt["button"]
-            color = opt["color"]
+            color = self._scale_color(opt["color"])
             leds = self._get_button_leds(btn_num)
             for led_idx in leds:
-                tildagonos.leds[led_idx] = tuple(color)
+                tildagonos.leds[led_idx] = color
         tildagonos.leds.write()
 
     def _set_all_leds(self, color):
         eventbus.emit(PatternDisable())
+        scaled = self._scale_color(color)
         for i in range(19):
-            tildagonos.leds[i] = tuple(color)
+            tildagonos.leds[i] = scaled
         tildagonos.leds.write()
 
     def _clear_leds(self):
@@ -465,24 +482,26 @@ class SimpleSurveyApp(app.App):
         i1 = (button_num - 1) * 2
         i2 = i1 + 1
         
+        scaled_color = self._scale_color(color)
+        
         if t >= self.animation_duration:
             # Fade out
             fade_pct = max(0.0, 1.0 - (t - self.animation_duration) / self.fade_duration)
-            faded = tuple(int(c * fade_pct) for c in color)
+            faded = tuple(int(c * fade_pct) for c in scaled_color)
             for led_idx in outer_leds:
                 tildagonos.leds[led_idx] = faded
         elif t >= T_prop:
             # All outer LEDs lit
             for led_idx in outer_leds:
-                tildagonos.leds[led_idx] = tuple(color)
+                tildagonos.leds[led_idx] = scaled_color
         else:
             # Propagating
             step = int((t / T_prop) * 6)
             for j in range(step + 1):
                 idx_l = (i1 - j) % 12
                 idx_r = (i2 + j) % 12
-                tildagonos.leds[outer_leds[idx_l]] = tuple(color)
-                tildagonos.leds[outer_leds[idx_r]] = tuple(color)
+                tildagonos.leds[outer_leds[idx_l]] = scaled_color
+                tildagonos.leds[outer_leds[idx_r]] = scaled_color
                 
         tildagonos.leds.write()
 
