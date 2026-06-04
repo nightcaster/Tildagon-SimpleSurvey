@@ -12,7 +12,7 @@
                     0
                 ],
                 "button": 1,
-                "votes": 13
+                "votes": 1
             },
             {
                 "label": "Coffee",
@@ -22,43 +22,73 @@
                     0
                 ],
                 "button": 4,
-                "votes": 4
+                "votes": 0
             }
         ]
     },
     {
-        "id": "sample_lunch",
-        "name": "Lunch Poll",
-        "question": "What's for lunch?",
+        "id": "cats_vs_dogs",
+        "name": "Cats vs. Dogs",
+        "question": "Best Pet?",
         "options": [
             {
-                "label": "Pizza",
+                "label": "Cats",
                 "color": [
-                    245,
-                    80,
-                    137
-                ],
-                "button": 5,
-                "votes": 0
-            },
-            {
-                "label": "Burger",
-                "color": [
-                    249,
-                    226,
-                    0
+                    255,
+                    51,
+                    153
                 ],
                 "button": 1,
                 "votes": 0
             },
             {
-                "label": "Salad",
+                "label": "Birds",
                 "color": [
-                    46,
-                    173,
-                    217
+                    0,
+                    204,
+                    255
                 ],
                 "button": 2,
+                "votes": 0
+            },
+            {
+                "label": "Lizards/Reptiles",
+                "color": [
+                    0,
+                    204,
+                    0
+                ],
+                "button": 3,
+                "votes": 0
+            },
+            {
+                "label": "Dogs",
+                "color": [
+                    255,
+                    128,
+                    0
+                ],
+                "button": 4,
+                "votes": 0
+            },
+            {
+                "label": "Small Mammals",
+                "color": [
+                    153,
+                    51,
+                    255
+                ],
+                "button": 5,
+                "votes": 0
+            },
+            {
+                "label": "Other",
+                "color": [
+                    255,
+                    255,
+                    51
+                ],
+                "button": 6,
                 "votes": 0
             }
         ]
@@ -126,6 +156,73 @@
                     204
                 ],
                 "button": 5,
+                "votes": 0
+            }
+        ]
+    },
+    {
+        "id": "where_next",
+        "name": "Where Next?",
+        "question": "Where Next?",
+        "options": [
+            {
+                "label": "Stage A",
+                "color": [
+                    255,
+                    51,
+                    51
+                ],
+                "button": 1,
+                "votes": 0
+            },
+            {
+                "label": "Bar",
+                "color": [
+                    255,
+                    153,
+                    51
+                ],
+                "button": 2,
+                "votes": 0
+            },
+            {
+                "label": "Stage B",
+                "color": [
+                    255,
+                    255,
+                    51
+                ],
+                "button": 3,
+                "votes": 0
+            },
+            {
+                "label": "Lounge",
+                "color": [
+                    51,
+                    255,
+                    51
+                ],
+                "button": 4,
+                "votes": 0
+            },
+            {
+                "label": "Stage C",
+                "color": [
+                    51,
+                    153,
+                    255
+                ],
+                "button": 5,
+                "votes": 0
+            },
+            {
+                "label": "Null Sector",
+                "color": [
+                    204,
+                    51,
+                    255
+                ],
+                "button": 6,
                 "votes": 0
             }
         ]
