@@ -159,9 +159,10 @@ class SimpleSurveyApp(app.App):
             self.state = "SURVEY_MENU"
             self._init_survey_menu()
 
-    def _handle_main_menu_back(self):
-        if not self.cancel_button_released:
-            return
+    def _handle_main_menu_back(self, from_menu_select=False):
+        if not from_menu_select:
+            if not self.cancel_button_released:
+                return
         self._cleanup_all()
         self.minimise()
 
@@ -213,12 +214,13 @@ class SimpleSurveyApp(app.App):
             self.state = "CONFIRM_ACTION"
             self.anim_time = 0.0
         elif item == "Back":
-            self._go_to_main_menu()
+            self._go_to_main_menu(from_menu_select=True)
 
-    def _go_to_main_menu(self):
-        if not self.cancel_button_released:
-            return
-        self.cancel_button_released = False
+    def _go_to_main_menu(self, from_menu_select=False):
+        if not from_menu_select:
+            if not self.cancel_button_released:
+                return
+            self.cancel_button_released = False
         self.state = "MAIN_MENU"
         self._init_main_menu()
 
@@ -290,12 +292,13 @@ class SimpleSurveyApp(app.App):
             btn_num = idx - 1
             self._edit_survey_slot(btn_num)
         elif idx == 8:
-            self._handle_edit_survey_back()
+            self._handle_edit_survey_back(from_menu_select=True)
 
-    def _handle_edit_survey_back(self):
-        if not self.cancel_button_released:
-            return
-        self.cancel_button_released = False
+    def _handle_edit_survey_back(self, from_menu_select=False):
+        if not from_menu_select:
+            if not self.cancel_button_released:
+                return
+            self.cancel_button_released = False
         self.state = "SURVEY_MENU"
         self._init_survey_menu()
 
@@ -405,12 +408,13 @@ class SimpleSurveyApp(app.App):
             self.state = "EDIT_SURVEY"
             self._init_edit_survey_menu()
         elif idx == 3:
-            self._handle_edit_slot_back()
+            self._handle_edit_slot_back(from_menu_select=True)
 
-    def _handle_edit_slot_back(self):
-        if not self.cancel_button_released:
-            return
-        self.cancel_button_released = False
+    def _handle_edit_slot_back(self, from_menu_select=False):
+        if not from_menu_select:
+            if not self.cancel_button_released:
+                return
+            self.cancel_button_released = False
         self.editing_option = None
         self.state = "EDIT_SURVEY"
         self._init_edit_survey_menu()
@@ -528,12 +532,13 @@ class SimpleSurveyApp(app.App):
         elif item == "Custom RGB":
             self._init_custom_rgb_menu()
         elif item == "Back":
-            self._handle_color_back()
+            self._handle_color_back(from_menu_select=True)
 
-    def _handle_color_back(self):
-        if not self.cancel_button_released:
-            return
-        self.cancel_button_released = False
+    def _handle_color_back(self, from_menu_select=False):
+        if not from_menu_select:
+            if not self.cancel_button_released:
+                return
+            self.cancel_button_released = False
         self._clear_leds()
         self.state = "EDIT_SLOT"
         self._init_edit_slot_menu()
@@ -572,14 +577,13 @@ class SimpleSurveyApp(app.App):
             self.state = "COLOR_SELECT"
             self._init_color_select_menu()
         elif idx == 4:
-            self._clear_leds()
-            self.state = "COLOR_SELECT"
-            self._init_color_select_menu()
+            self._handle_custom_rgb_back(from_menu_select=True)
 
-    def _handle_custom_rgb_back(self):
-        if not self.cancel_button_released:
-            return
-        self.cancel_button_released = False
+    def _handle_custom_rgb_back(self, from_menu_select=False):
+        if not from_menu_select:
+            if not self.cancel_button_released:
+                return
+            self.cancel_button_released = False
         self._clear_leds()
         self.state = "COLOR_SELECT"
         self._init_color_select_menu()
