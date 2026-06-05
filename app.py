@@ -76,6 +76,7 @@ class SimpleSurveyApp(app.App):
         self.cancel_is_held = False
         self.cancel_press_time = 0.0
         self.held_buttons = set()
+        self.cancel_button_released = True
         
         # Load surveys from JSON
         self._load_surveys()
@@ -159,6 +160,8 @@ class SimpleSurveyApp(app.App):
             self._init_survey_menu()
 
     def _handle_main_menu_back(self):
+        if not self.cancel_button_released:
+            return
         self._cleanup_all()
         self.minimise()
 
@@ -213,6 +216,9 @@ class SimpleSurveyApp(app.App):
             self._go_to_main_menu()
 
     def _go_to_main_menu(self):
+        if not self.cancel_button_released:
+            return
+        self.cancel_button_released = False
         self.state = "MAIN_MENU"
         self._init_main_menu()
 
@@ -287,6 +293,9 @@ class SimpleSurveyApp(app.App):
             self._handle_edit_survey_back()
 
     def _handle_edit_survey_back(self):
+        if not self.cancel_button_released:
+            return
+        self.cancel_button_released = False
         self.state = "SURVEY_MENU"
         self._init_survey_menu()
 
@@ -399,6 +408,9 @@ class SimpleSurveyApp(app.App):
             self._handle_edit_slot_back()
 
     def _handle_edit_slot_back(self):
+        if not self.cancel_button_released:
+            return
+        self.cancel_button_released = False
         self.editing_option = None
         self.state = "EDIT_SURVEY"
         self._init_edit_survey_menu()
@@ -519,6 +531,9 @@ class SimpleSurveyApp(app.App):
             self._handle_color_back()
 
     def _handle_color_back(self):
+        if not self.cancel_button_released:
+            return
+        self.cancel_button_released = False
         self._clear_leds()
         self.state = "EDIT_SLOT"
         self._init_edit_slot_menu()
@@ -562,6 +577,9 @@ class SimpleSurveyApp(app.App):
             self._init_color_select_menu()
 
     def _handle_custom_rgb_back(self):
+        if not self.cancel_button_released:
+            return
+        self.cancel_button_released = False
         self._clear_leds()
         self.state = "COLOR_SELECT"
         self._init_color_select_menu()
@@ -631,6 +649,9 @@ class SimpleSurveyApp(app.App):
             return
         elif self.state == "START_ERROR":
             if btn_num == 6:
+                if not self.cancel_button_released:
+                    return
+                self.cancel_button_released = False
                 self.held_buttons.clear()
                 self.state = "SURVEY_MENU"
                 self._init_survey_menu()
@@ -656,6 +677,9 @@ class SimpleSurveyApp(app.App):
                 if self._render_update:
                     asyncio.create_task(self._render_update())
             elif btn_num == 6: # F button to cancel
+                if not self.cancel_button_released:
+                    return
+                self.cancel_button_released = False
                 self.held_buttons.clear()
                 self.state = "SURVEY_MENU"
                 self._init_survey_menu()
@@ -673,6 +697,9 @@ class SimpleSurveyApp(app.App):
                     if self._render_update:
                         asyncio.create_task(self._render_update())
                 else:
+                    if not self.cancel_button_released:
+                        return
+                    self.cancel_button_released = False
                     self._clear_leds()
                     self.held_buttons.clear()
                     self.state = "SURVEY_MENU"
@@ -684,6 +711,9 @@ class SimpleSurveyApp(app.App):
                 self._record_vote(btn_num)
         elif self.state == "VIEW_RESULTS":
             if btn_num == 6:
+                if not self.cancel_button_released:
+                    return
+                self.cancel_button_released = False
                 self.held_buttons.clear()
                 self.state = "SURVEY_MENU"
                 self._init_survey_menu()
@@ -697,6 +727,8 @@ class SimpleSurveyApp(app.App):
         btn_num = self._get_btn_num(event)
         if btn_num is not None:
             self.held_buttons.discard(btn_num)
+            if btn_num == 6:
+                self.cancel_button_released = True
             
         if self.state == "WAITING_FOR_CANCEL_RELEASE" and btn_num == 6:
             self.state = "SURVEY_MENU"
