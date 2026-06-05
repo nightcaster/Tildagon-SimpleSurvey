@@ -168,7 +168,7 @@ class SimpleSurveyApp(app.App):
             
         self.menu = Menu(
             self,
-            menu_items=["Start Polling", "Edit Survey", "View Results", "Delete Survey", "Back"],
+            menu_items=["Start Polling", "View Results", "Edit Survey", "Reset Results", "Delete Survey", "Back"],
             select_handler=self._handle_survey_menu_select,
             back_handler=self._go_to_main_menu
         )
@@ -187,19 +187,28 @@ class SimpleSurveyApp(app.App):
                 self._set_option_leds()
             else:
                 self.state = "START_ERROR"
-        elif item == "Edit Survey":
-            self.state = "EDIT_SURVEY"
-            self._init_edit_survey_menu()
         elif item == "View Results":
             if self.menu:
                 self.menu._cleanup()
                 self.menu = None
             self.state = "VIEW_RESULTS"
+        elif item == "Edit Survey":
+            self.state = "EDIT_SURVEY"
+            self._init_edit_survey_menu()
+        elif item == "Reset Results":
+            if self.menu:
+                self.menu._cleanup()
+                self.menu = None
+            self.confirm_action = "RESET"
+            self.state = "CONFIRM_ACTION"
+            self.anim_time = 0.0
         elif item == "Delete Survey":
-            self.surveys.remove(self.current_survey)
-            self._save_surveys()
-            self.current_survey = None
-            self._go_to_main_menu()
+            if self.menu:
+                self.menu._cleanup()
+                self.menu = None
+            self.confirm_action = "DELETE"
+            self.state = "CONFIRM_ACTION"
+            self.anim_time = 0.0
         elif item == "Back":
             self._go_to_main_menu()
 
@@ -628,6 +637,31 @@ class SimpleSurveyApp(app.App):
                 if self._render_update:
                     asyncio.create_task(self._render_update())
             return
+        elif self.state == "CONFIRM_ACTION":
+            if btn_num == 4: # D button to confirm
+                if self.confirm_action == "RESET":
+                    for opt in self.current_survey.get("options", []):
+                        opt["votes"] = 0
+                    self._save_surveys()
+                    self.held_buttons.clear()
+                    self.state = "SURVEY_MENU"
+                    self._init_survey_menu()
+                elif self.confirm_action == "DELETE":
+                    self.surveys.remove(self.current_survey)
+                    self._save_surveys()
+                    self.current_survey = None
+                    self.held_buttons.clear()
+                    self.state = "MAIN_MENU"
+                    self._init_main_menu()
+                if self._render_update:
+                    asyncio.create_task(self._render_update())
+            elif btn_num == 6: # F button to cancel
+                self.held_buttons.clear()
+                self.state = "SURVEY_MENU"
+                self._init_survey_menu()
+                if self._render_update:
+                    asyncio.create_task(self._render_update())
+            return
         elif self.state == "ACTIVE_POLLING":
             if btn_num == 6:
                 # If there's an option on button 6, use hold timeout, otherwise exit immediately
@@ -674,7 +708,7 @@ class SimpleSurveyApp(app.App):
         if self.state in [
             "MAIN_MENU", "SURVEY_MENU", "CREATING", "CREATING_IN_PROGRESS",
             "EDIT_SURVEY", "EDITING_SURVEY_DETAILS", "EDIT_SLOT",
-            "COLOR_SELECT", "CUSTOM_RGB_MENU", "START_ERROR"
+            "COLOR_SELECT", "CUSTOM_RGB_MENU", "START_ERROR", "CONFIRM_ACTION"
         ]:
             return
             
@@ -806,6 +840,9 @@ class SimpleSurveyApp(app.App):
             "EDIT_SURVEY", "EDIT_SLOT", "COLOR_SELECT", "CUSTOM_RGB_MENU"
         ] and self.menu:
             self.menu.update(delta)
+            
+        if self.state == "CONFIRM_ACTION":
+            self.anim_time += dt
             
         if self.state == "ACTIVE_POLLING" and self.cancel_is_held:
             self.cancel_press_time += dt
@@ -1151,6 +1188,65 @@ class SimpleSurveyApp(app.App):
         ctx.move_to(0, 75).text("Press CANCEL (F) to return")
         ctx.restore()
 
+    def _draw_confirm_action(self, ctx):
+        ctx.save()
+        clear_background(ctx)
+        
+        # Determine text based on action
+        if self.confirm_action == "RESET":
+            title = "Reset Results?"
+            msg1 = "Are you sure you want to"
+            msg2 = "reset all vote counts to 0?"
+            survey_name = self.current_survey["name"]
+        else:
+            title = "Delete Survey?"
+            msg1 = "Are you sure you want to"
+            msg2 = "delete this survey?"
+            survey_name = self.current_survey["name"]
+            
+        # Draw Title
+        ctx.rgb(1.0, 0.3, 0.3)  # Soft red warning color
+        ctx.font_size = 20
+        ctx.text_align = ctx.CENTER
+        ctx.text_baseline = ctx.MIDDLE
+        ctx.move_to(0, -60).text(title)
+        
+        # Draw Survey Name
+        ctx.rgb(1.0, 1.0, 1.0)
+        ctx.font_size = 15
+        ctx.move_to(0, -35).text(survey_name)
+        
+        # Draw Messages
+        ctx.rgb(0.8, 0.8, 0.8)
+        ctx.font_size = 13
+        ctx.move_to(0, -10).text(msg1)
+        ctx.move_to(0, 8).text(msg2)
+        
+        # Confirm / Cancel instructions
+        ctx.rgb(1.0, 1.0, 1.0)
+        ctx.font_size = 15
+        ctx.move_to(0, 32).text("Press D to Confirm")
+        ctx.rgb(0.6, 0.6, 0.6)
+        ctx.font_size = 13
+        ctx.move_to(0, 95).text("Press F to Cancel")
+        
+        # Pulsating Arrow pointing to D (D is Button 4 at bottom, i.e., y-axis positive)
+        dy = math.sin(self.anim_time * 6) * 5
+        
+        ctx.rgb(1.0, 0.4, 0.1) # Sleek orange/amber color
+        ctx.begin_path()
+        ctx.move_to(-8, 52 + dy)
+        ctx.line_to(8, 52 + dy)
+        ctx.line_to(8, 68 + dy)
+        ctx.line_to(18, 68 + dy)
+        ctx.line_to(0, 85 + dy)
+        ctx.line_to(-18, 68 + dy)
+        ctx.line_to(-8, 68 + dy)
+        ctx.close_path()
+        ctx.fill()
+        
+        ctx.restore()
+
     def draw(self, ctx):
         clear_background(ctx)
         
@@ -1171,6 +1267,8 @@ class SimpleSurveyApp(app.App):
             self._draw_edit_channel(ctx)
         elif self.state == "START_ERROR":
             self._draw_start_error(ctx)
+        elif self.state == "CONFIRM_ACTION":
+            self._draw_confirm_action(ctx)
             
         for overlay in self.overlays:
             overlay.draw(ctx)
