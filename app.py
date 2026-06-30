@@ -7,6 +7,7 @@ from events.input import BUTTON_TYPES, ButtonDownEvent, ButtonUpEvent
 from tildagonos import tildagonos
 from system.eventbus import eventbus
 from app_components import Menu, TextDialog, clear_background
+from app_components.background import Background as bg
 from system.patterndisplay.events import PatternDisable, PatternEnable
 
 try:
@@ -870,6 +871,7 @@ class SimpleSurveyApp(app.App):
         tildagonos.leds.write()
 
     def update(self, delta):
+        bg.update(delta)
         dt = delta / 1000.0
         if self.state in [
             "MAIN_MENU", "SURVEY_MENU", "CREATING_IN_PROGRESS",
@@ -1181,7 +1183,7 @@ class SimpleSurveyApp(app.App):
 
     def _draw_edit_channel(self, ctx):
         ctx.save()
-        clear_background(ctx)
+        bg.draw(ctx)
         
         # Title
         ctx.rgb(1.0, 1.0, 1.0)
@@ -1205,7 +1207,7 @@ class SimpleSurveyApp(app.App):
 
     def _draw_start_error(self, ctx):
         ctx.save()
-        clear_background(ctx)
+        bg.draw(ctx)
         
         ctx.rgb(1.0, 0.2, 0.2)
         ctx.font_size = 20
@@ -1226,7 +1228,7 @@ class SimpleSurveyApp(app.App):
 
     def _draw_confirm_action(self, ctx):
         ctx.save()
-        clear_background(ctx)
+        bg.draw(ctx)
         
         # Determine text based on action
         if self.confirm_action == "RESET":
@@ -1284,7 +1286,7 @@ class SimpleSurveyApp(app.App):
         ctx.restore()
 
     def draw(self, ctx):
-        clear_background(ctx)
+        bg.draw(ctx)
         
         if self.state in [
             "MAIN_MENU", "SURVEY_MENU", "CREATING_IN_PROGRESS",
