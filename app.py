@@ -21,7 +21,7 @@ except ImportError:
 FONT_SIZE_QUESTION_MID = 24      # Survey question text inside the outer results circle
 FONT_SIZE_POLLING_VOTES = 18     # Total votes count below the centered question
 FONT_SIZE_OPTION_LBL = 16        # Option labels and individual counts around perimeter
-FONT_SIZE_BANNER = 16            # Hold-to-exit countdown/warning overlay message
+FONT_SIZE_BANNER = 14            # Hold-to-exit countdown/warning overlay message
 
 # 2. Vote Recorded Screen (Success)
 FONT_SIZE_SUCCESS_LBL = 26       # Centered name of option voted for
